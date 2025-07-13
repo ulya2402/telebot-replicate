@@ -1,0 +1,21 @@
+{
+    "welcome": "Welcome, {name}! I am an AI image generation bot. Use /img to start.",
+    "help": "Here are the available commands:\n/img - Start image generation\n/profile - View your profile and credits\n/referral - Get your referral link\n/lang - Change language",
+    "profile": "👤 *Profile*\n\n*ID*: `{id}`\n*Credits*: `{credits}` 💎\n*Next free credits in*: `{reset_time}`",
+    "referral_message": "Share this link with your friends! You'll get 5 💎 for each friend who generates their first 3 images.",
+    "referral_link_text": "Your referral link:",
+    "insufficient_credits": "You don't have enough credits for this model. Required: {required} 💎, You have: {balance} 💎.",
+    "choose_model": "Please choose an AI model to generate your image:",
+    "enter_prompt": "Great! Now, please send me the prompt for your image.",
+    "generating": "⏳ Generating your image... This might take a moment.",
+    "generation_failed": "❌ Generation failed. Please try again later.",
+    "lang_select": "Please select your preferred language:",
+    "lang_updated": "Language updated to English.",
+    "prev_button": "⬅️ Previous",
+    "next_button": "Next ➡️",
+    "time_hours": "hours",
+    "time_minutes": "minutes",
+    "time_now": "Now",
+    "flow_cancelled": "✅ Operation cancelled. You can start a new command.",
+    "cancel_button": "❌ Cancel"
+  }

@@ -1,0 +1,22 @@
+[
+    {
+      "id": "t001",
+      "title": "Cyberpunk City",
+      "prompt": "a detailed cinematic shot of a rainy cyberpunk city street at night, neon signs reflecting on the wet pavement, high-tech vehicles, detailed, 8k, photorealistic"
+    },
+    {
+      "id": "t002",
+      "title": "Fantasy Landscape",
+      "prompt": "breathtaking fantasy landscape with a floating castle, waterfalls, and a vibrant forest, style of studio ghibli, detailed, epic scale"
+    },
+    {
+      "id": "t003",
+      "title": "Cute Animal",
+      "prompt": "a small, adorable, fluffy cat wearing a tiny wizard hat, sitting on a pile of old books, soft lighting, detailed fur, macro shot"
+    },
+    {
+      "id": "t004",
+      "title": "Photorealistic Portrait",
+      "prompt": "photorealistic close-up portrait of an old fisherman with a weathered face and a kind smile, detailed wrinkles, sharp focus, natural lighting"
+    }
+  ]

@@ -1,0 +1,114 @@
+[
+    {
+      "id": "flux-schnell",
+      "name": "Flux Schnell",
+      "replicate_id": "black-forest-labs/flux-schnell",
+      "tier": "basic",
+      "cost": 1,
+      "enabled": true
+    },
+    {
+      "id": "imagen-4-fast",
+      "name": "Imagen 4 Fast",
+      "replicate_id": "google/imagen-4-fast",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "imagen-3-fast",
+      "name": "Imagen 3 Fast",
+      "replicate_id": "google/imagen-3-fast",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "flux-dev-lora",
+      "name": "Flux Dev Lora",
+      "replicate_id": "black-forest-labs/flux-dev-lora",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "recraft-v3",
+      "name": "Recraft V3",
+      "replicate_id": "recraft-ai/recraft-v3",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "imagen-4",
+      "name": "Imagen 4",
+      "replicate_id": "google/imagen-4",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "flux-kontext-pro",
+      "name": "Flux Kontext Pro",
+      "replicate_id": "black-forest-labs/flux-kontext-pro",
+      "tier": "standard",
+      "cost": 9,
+      "enabled": true
+    },
+    {
+      "id": "gen4-image",
+      "name": "Gen 4",
+      "replicate_id": "runwayml/gen4-image",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "flux-pro",
+      "name": "Flux Pro",
+      "replicate_id": "black-forest-labs/flux-pro",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "ideogram-v3-balanced",
+      "name": "Ideogram V3 Balanced",
+      "replicate_id": "ideogram-ai/ideogram-v3-balanced",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "imagen-4-ultra",
+      "name": "Imagen 4 Ultra",
+      "replicate_id": "google/imagen-4-ultra",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "stable-diffusion-3.5-large",
+      "name": "Stable Diffusion 3.5 Large",
+      "replicate_id": "stability-ai/stable-diffusion-3.5-large",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "flux-kontext-max",
+      "name": "Flux Kontext Max",
+      "replicate_id": "black-forest-labs/flux-kontext-max",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    },
+    {
+      "id": "recraft-v3-svg",
+      "name": "Recraft V3 SVG",
+      "replicate_id": "recraft-ai/recraft-v3-svg",
+      "tier": "premium",
+      "cost": 26,
+      "enabled": true
+    }
+  ]

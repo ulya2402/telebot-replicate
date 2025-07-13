@@ -1,0 +1,19 @@
+{
+    "welcome": "Selamat datang, {name}! Saya adalah bot pembuat gambar AI. Gunakan /img untuk memulai.",
+    "help": "Berikut adalah perintah yang tersedia:\n/img - Mulai membuat gambar\n/profile - Lihat profil dan kredit Anda\n/referral - Dapatkan tautan referral Anda\n/lang - Ganti bahasa",
+    "profile": "👤 *Profil*\n\n*ID*: `{id}`\n*Kredit*: `{credits}` 💎\n*Kredit gratis berikutnya dalam*: `{reset_time}`",
+    "referral_message": "Bagikan tautan ini ke temanmu! Kamu akan mendapatkan 5 💎 untuk setiap teman yang berhasil membuat 3 gambar pertamanya.",
+    "referral_link_text": "Tautan referral kamu:",
+    "insufficient_credits": "Kredit Anda tidak cukup untuk model ini. Dibutuhkan: {required} 💎, Anda memiliki: {balance} 💎.",
+    "choose_model": "Silakan pilih model AI untuk membuat gambar Anda:",
+    "enter_prompt": "Bagus! Sekarang, silakan kirimkan saya prompt untuk gambar Anda.",
+    "generating": "⏳ Sedang membuat gambar Anda... Ini mungkin memakan waktu sejenak.",
+    "generation_failed": "❌ Pembuatan gambar gagal. Silakan coba lagi nanti.",
+    "lang_select": "Silakan pilih bahasa yang Anda inginkan:",
+    "lang_updated": "Bahasa telah diubah ke Bahasa Indonesia.",
+    "prev_button": "⬅️ Sebelumnya",
+    "next_button": "Berikutnya ➡️",
+    "time_hours": "jam",
+    "time_minutes": "menit",
+    "time_now": "Sekarang"
+  }

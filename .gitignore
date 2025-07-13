@@ -1,0 +1,6 @@
+# File environment yang berisi kunci rahasia
+.env
+
+# Hasil kompilasi 
+*.exe
+telegram-ai-bot
