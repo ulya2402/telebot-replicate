@@ -26,26 +26,33 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID string, 
 		"prompt": prompt,
 	}
 
-	// The new library has a simpler "Run" function that creates and waits
 	output, err := c.client.Run(ctx, modelID, input, nil)
 	if err != nil {
 		log.Printf("ERROR: Prediction failed to complete: %v", err)
 		return nil, err
 	}
 
-	outputSlice, ok := output.([]interface{})
-	if !ok {
-		err := fmt.Errorf("prediction output is not a slice")
-		log.Printf("ERROR: %v", err)
-		return nil, err
-	}
-
+	// PERBAIKAN DIMULAI DI SINI: Membuat kode lebih fleksibel
 	var urls []string
-	for _, item := range outputSlice {
-		if url, ok := item.(string); ok {
-			urls = append(urls, url)
+
+	// Coba proses sebagai slice/daftar (format paling umum)
+	if outputSlice, ok := output.([]interface{}); ok {
+		for _, item := range outputSlice {
+			if url, ok := item.(string); ok {
+				urls = append(urls, url)
+			}
 		}
+		return urls, nil
 	}
 
-	return urls, nil
+	// Jika gagal, coba proses sebagai string tunggal
+	if outputString, ok := output.(string); ok {
+		urls = append(urls, outputString)
+		return urls, nil
+	}
+	// AKHIR PERBAIKAN
+
+	err = fmt.Errorf("prediction output is in an unknown format")
+	log.Printf("ERROR: %v", err)
+	return nil, err
 }

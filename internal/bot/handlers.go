@@ -24,9 +24,10 @@ type Handler struct {
 	PromptTemplates []config.PromptTemplate
 	Replicate       *services.ReplicateClient
 	userStates      map[int64]string
+	Config          *config.Config
 }
 
-func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient) *Handler {
+func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config) *Handler {
 	return &Handler{
 		Bot:             api,
 		DB:              db,
@@ -35,7 +36,17 @@ func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localizati
 		PromptTemplates: templates,
 		Replicate:       replicate,
 		userStates:      make(map[int64]string),
+		Config:          cfg, // <-- Sekarang 'cfg' dikenal dan bisa digunakan
 	}
+}
+
+func (h *Handler) isAdmin(userID int64) bool {
+	for _, adminID := range h.Config.AdminTelegramIDs {
+		if userID == adminID {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Handler) HandleUpdate(update tgbotapi.Update) {
@@ -52,7 +63,18 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 }
 
 func (h *Handler) handleCommand(message *tgbotapi.Message) {
-	switch message.Command() {
+	command := message.Command()
+
+	// Cek apakah perintah ini khusus admin
+	isAdminCommand := command == "stats" || command == "addcredits" || command == "broadcast"
+	if isAdminCommand && !h.isAdmin(message.From.ID) {
+		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get("en", "permission_denied"))
+		h.Bot.Send(msg)
+		return
+	}
+
+	// Jalankan perintah
+	switch command {
 	case "start":
 		h.handleStart(message)
 	case "help":
@@ -65,13 +87,119 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleReferral(message)
 	case "lang":
 		h.handleLang(message)
-	case "cancel": // LOGIKA BARU UNTUK /cancel
+	case "cancel":
 		h.handleCancel(message)
+	case "stats":
+		h.handleStats(message)
+	case "addcredits":
+		h.handleAddCredits(message)
+	case "broadcast":
+		h.handleBroadcast(message)
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Unknown command")
 		h.Bot.Send(msg)
 	}
 }
+
+
+func (h *Handler) handleStats(message *tgbotapi.Message) {
+	stats, err := h.DB.GetStatistics()
+	if err != nil {
+		log.Printf("ERROR: Failed to get statistics: %v", err)
+		return
+	}
+	
+	lang := "en" // Statistik biasanya dalam bahasa Inggris
+	args := map[string]string{
+		"total_users":     strconv.Itoa(stats.TotalUsers),
+		"new_users_today": strconv.Itoa(stats.NewUsersToday),
+		"premium_users":   strconv.Itoa(stats.PremiumUsers),
+	}
+	
+	text := h.Localizer.Getf(lang, "stats_message", args)
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ParseMode = "Markdown"
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
+	lang := "en"
+	parts := strings.Fields(message.CommandArguments())
+	if len(parts) != 2 {
+		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "addcredits_usage"))
+		h.Bot.Send(msg)
+		return
+	}
+	
+	targetID, err1 := strconv.ParseInt(parts[0], 10, 64)
+	amount, err2 := strconv.Atoi(parts[1])
+	
+	if err1 != nil || err2 != nil {
+		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "addcredits_usage"))
+		h.Bot.Send(msg)
+		return
+	}
+	
+	targetUser, err := h.DB.GetUserByTelegramID(targetID)
+	if err != nil || targetUser == nil {
+		args := map[string]string{"user_id": parts[0]}
+		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "addcredits_user_not_found", args))
+		h.Bot.Send(msg)
+		return
+	}
+	
+	targetUser.Credits += amount
+	h.DB.UpdateUser(targetUser)
+	
+	args := map[string]string{
+		"amount":  strconv.Itoa(amount),
+		"user_id": parts[0],
+	}
+	msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "addcredits_success", args))
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
+	lang := "en"
+	broadcastText := message.CommandArguments()
+	if broadcastText == "" {
+		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "broadcast_usage"))
+		h.Bot.Send(msg)
+		return
+	}
+
+	allUsers, err := h.DB.GetAllUsers()
+	if err != nil {
+		log.Printf("ERROR: Failed to get all users for broadcast: %v", err)
+		return
+	}
+
+	args := map[string]string{"user_count": strconv.Itoa(len(allUsers))}
+	startMsg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "broadcast_started", args))
+	h.Bot.Send(startMsg)
+
+	// Jalankan broadcast di goroutine agar tidak memblokir bot
+	go func(adminChatID int64) {
+		sentCount := 0
+		for _, user := range allUsers {
+			msg := tgbotapi.NewMessage(user.TelegramID, broadcastText)
+			_, err := h.Bot.Send(msg)
+			if err == nil {
+				sentCount++
+			}
+			// Rate limiting: tunggu sebentar antar pesan untuk menghindari blokir Telegram
+			time.Sleep(100 * time.Millisecond)
+		}
+		
+		finishArgs := map[string]string{
+			"sent_count":   strconv.Itoa(sentCount),
+			"total_count": strconv.Itoa(len(allUsers)),
+		}
+		finishMsg := tgbotapi.NewMessage(adminChatID, h.Localizer.Getf(lang, "broadcast_finished", finishArgs))
+		h.Bot.Send(finishMsg)
+	}(message.Chat.ID)
+}
+
 
 func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	parts := strings.Split(callback.Data, ":")

@@ -76,3 +76,50 @@ func (c *Client) UpdateUser(user *User) error {
 	}
 	return err
 }
+
+type Statistics struct {
+	TotalUsers     int `json:"total_users"`
+	NewUsersToday  int `json:"new_users_today"`
+	PremiumUsers   int `json:"premium_users"`
+}
+
+func (c *Client) GetAllUsers() ([]User, error) {
+	var results []User
+	_, err := c.From("users").Select("*", "exact", false).ExecuteTo(&results)
+	if err != nil {
+		log.Printf("ERROR: Failed to get all users: %v", err)
+		return nil, err
+	}
+	return results, nil
+}
+
+func (c *Client) GetStatistics() (*Statistics, error) {
+    var stats Statistics
+    
+    // Total Users
+    var totalUsers []map[string]interface{}
+    _, err := c.From("users").Select("count", "exact", true).ExecuteTo(&totalUsers)
+    if err != nil || len(totalUsers) == 0 {
+        return nil, err
+    }
+    stats.TotalUsers = int(totalUsers[0]["count"].(float64))
+
+    // New Users Today (UTC)
+    var newUsersToday []map[string]interface{}
+    today := time.Now().UTC().Format("2006-01-02")
+    _, err = c.From("users").Select("count", "exact", true).Gte("created_at", today).ExecuteTo(&newUsersToday)
+    if err != nil || len(newUsersToday) == 0 {
+        return nil, err
+    }
+    stats.NewUsersToday = int(newUsersToday[0]["count"].(float64))
+
+    // Premium Users
+    var premiumUsers []map[string]interface{}
+    _, err = c.From("users").Select("count", "exact", true).Eq("is_premium", "true").ExecuteTo(&premiumUsers)
+    if err != nil || len(premiumUsers) == 0 {
+        return nil, err
+    }
+    stats.PremiumUsers = int(premiumUsers[0]["count"].(float64))
+
+    return &stats, nil
+}

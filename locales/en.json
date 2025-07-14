@@ -17,5 +17,13 @@
     "time_minutes": "minutes",
     "time_now": "Now",
     "flow_cancelled": "✅ Operation cancelled. You can start a new command.",
-    "cancel_button": "❌ Cancel"
+    "cancel_button": "❌ Cancel",
+    "permission_denied": "❌ You do not have permission to use this command.",
+  "addcredits_usage": "Usage: /addcredits [UserID] [Amount]",
+  "addcredits_success": "✅ Successfully added {amount} credits to user {user_id}.",
+  "addcredits_user_not_found": "❌ User with ID {user_id} not found.",
+  "broadcast_usage": "Usage: /broadcast [Your message]",
+  "broadcast_started": "⏳ Starting broadcast to {user_count} users... You will be notified upon completion.",
+  "broadcast_finished": "✅ Broadcast finished. Sent to {sent_count} of {total_count} users.",
+  "stats_message": "📊 *Bot Statistics*\n\n*Total Users*: {total_users}\n*New Users Today*: {new_users_today}\n*Premium Users*: {premium_users}"
   }

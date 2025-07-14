@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +16,7 @@ type Config struct {
 	SupabaseURL        string
 	SupabaseServiceKey string
 	ReplicateAPIToken  string
+	AdminTelegramIDs   []int64
 }
 
 type Model struct {
@@ -37,11 +40,29 @@ func Load() *Config {
 		log.Println("INFO: No .env file found, reading from environment variables")
 	}
 
+	adminIDsStr := getEnv("ADMIN_TELEGRAM_IDS", "")
+	var adminIDs []int64
+	if adminIDsStr != "" {
+		parts := strings.Split(adminIDsStr, ",")
+		for _, part := range parts {
+			id, err := strconv.ParseInt(part, 10, 64)
+			if err != nil {
+				log.Printf("WARN: Invalid admin Telegram ID: %s", part)
+				continue
+			}
+			adminIDs = append(adminIDs, id)
+		}
+	}
+	if len(adminIDs) > 0 {
+		log.Printf("INFO: Loaded %d admin(s)", len(adminIDs))
+	}
+
 	return &Config{
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 		ReplicateAPIToken:  getEnv("REPLICATE_API_TOKEN", ""),
+		AdminTelegramIDs:   adminIDs,
 	}
 }
 

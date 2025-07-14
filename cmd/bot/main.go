@@ -32,7 +32,7 @@ func main() {
 	api.Debug = false
 	log.Printf("INFO: Authorized on account %s", api.Self.UserName)
 
-	handler := bot.NewHandler(api, dbClient, localizer, models, templates, replicateClient)
+	handler := bot.NewHandler(api, dbClient, localizer, models, templates, replicateClient, cfg)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
