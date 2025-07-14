@@ -20,6 +20,8 @@ type User struct {
 	LanguageCode        string    `json:"language_code"`
 	ReferrerID          int64     `json:"referrer_id,omitempty"`
 	GeneratedImageCount int       `json:"generated_image_count"`
+	AspectRatio         string    `json:"aspect_ratio"` // <-- Tambahkan ini
+	NumOutputs          int       `json:"num_outputs"`
 }
 
 type Client struct {

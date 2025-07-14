@@ -5,7 +5,11 @@
       "replicate_id": "black-forest-labs/flux-schnell",
       "tier": "basic",
       "cost": 1,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true,
+      "description": "The fastest image generation model."
     },
     {
       "id": "imagen-4-fast",
@@ -13,7 +17,10 @@
       "replicate_id": "google/imagen-4-fast",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false
     },
     {
       "id": "imagen-3-fast",
@@ -21,7 +28,10 @@
       "replicate_id": "google/imagen-3-fast",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "flux-dev-lora",
@@ -29,7 +39,10 @@
       "replicate_id": "black-forest-labs/flux-dev-lora",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "recraft-v3",
@@ -37,7 +50,10 @@
       "replicate_id": "recraft-ai/recraft-v3",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true, 
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "imagen-4",
@@ -45,7 +61,10 @@
       "replicate_id": "google/imagen-4",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "flux-kontext-pro",
@@ -53,7 +72,11 @@
       "replicate_id": "black-forest-labs/flux-kontext-pro",
       "tier": "standard",
       "cost": 9,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": true,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "description": "A state-of-the-art text-based image editing model that delivers high-quality outputs with excellent prompt following and consistent results for transforming images through natural language."
     },
     {
       "id": "gen4-image",
@@ -61,7 +84,10 @@
       "replicate_id": "runwayml/gen4-image",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "flux-pro",
@@ -69,7 +95,10 @@
       "replicate_id": "black-forest-labs/flux-pro",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "ideogram-v3-balanced",
@@ -77,7 +106,10 @@
       "replicate_id": "ideogram-ai/ideogram-v3-balanced",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "imagen-4-ultra",
@@ -85,7 +117,10 @@
       "replicate_id": "google/imagen-4-ultra",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "stable-diffusion-3.5-large",
@@ -93,7 +128,10 @@
       "replicate_id": "stability-ai/stable-diffusion-3.5-large",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "flux-kontext-max",
@@ -101,7 +139,10 @@
       "replicate_id": "black-forest-labs/flux-kontext-max",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": true,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     },
     {
       "id": "recraft-v3-svg",
@@ -109,6 +150,9 @@
       "replicate_id": "recraft-ai/recraft-v3-svg",
       "tier": "premium",
       "cost": 26,
-      "enabled": true
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": true
     }
   ]

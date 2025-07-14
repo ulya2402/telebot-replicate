@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"telegram-ai-bot/internal/config"
+
+	"telegram-ai-bot/internal/database"
 	
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -100,5 +102,65 @@ func (h *Handler) createLanguageSelectionKeyboard() tgbotapi.InlineKeyboardMarku
 		),
 	)
 	return keyboard
+}
+
+func (h *Handler) createSettingsKeyboard(lang string, user *database.User) tgbotapi.InlineKeyboardMarkup {
+	textAR := h.Localizer.Get(lang, "change_aspect_ratio")
+	textNum := h.Localizer.Get(lang, "change_num_images")
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(textAR, "settings_aspect_ratio"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(textNum, "settings_num_images"),
+		),
+	)
+	return keyboard
+}
+
+func (h *Handler) createAspectRatioKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1:1 (Square)", "set_ar:1:1"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("16:9 (Landscape)", "set_ar:16:9"),
+			tgbotapi.NewInlineKeyboardButtonData("9:16 (Portrait)", "set_ar:9:16"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("4:3 (Classic)", "set_ar:4:3"),
+			tgbotapi.NewInlineKeyboardButtonData("3:4 (Classic)", "set_ar:3:4"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("3:2 (Photo)", "set_ar:3:2"),
+			tgbotapi.NewInlineKeyboardButtonData("2:3 (Photo)", "set_ar:2:3"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("5:4 (Vintage)", "set_ar:5:4"),
+			tgbotapi.NewInlineKeyboardButtonData("4:5 (Vintage)", "set_ar:4:5"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("21:9 (Widescreen)", "set_ar:21:9"),
+			tgbotapi.NewInlineKeyboardButtonData("9:21 (Widescreen)", "set_ar:9:21"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "settings_back_to_main"),
+		),
+	)
+}
+
+func (h *Handler) createNumOutputsKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1", "set_num:1"),
+			tgbotapi.NewInlineKeyboardButtonData("2", "set_num:2"),
+			tgbotapi.NewInlineKeyboardButtonData("3", "set_num:3"),
+			tgbotapi.NewInlineKeyboardButtonData("4", "set_num:4"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "settings_back_to_main"),
+		),
+	)
 }
 

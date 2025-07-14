@@ -12,6 +12,7 @@ import (
 	"telegram-ai-bot/internal/services"
 	"time"
 	"html"
+	
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -95,11 +96,15 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleAddCredits(message)
 	case "broadcast":
 		h.handleBroadcast(message)
+	case "settings":
+		h.handleSettings(message)
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Unknown command")
 		h.Bot.Send(msg)
 	}
 }
+
+
 
 
 func (h *Handler) handleStats(message *tgbotapi.Message) {
@@ -200,6 +205,43 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	}(message.Chat.ID)
 }
 
+func (h *Handler) handleSettings(message *tgbotapi.Message) {
+	user, err := h.getOrCreateUser(message.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	args := map[string]string{
+		"aspect_ratio": user.AspectRatio,
+		"num_images":   strconv.Itoa(user.NumOutputs),
+	}
+	text := h.Localizer.Getf(lang, "settings_menu", args)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ParseMode = "Markdown"
+	// PERBAIKAN: Tambahkan '&' untuk mendapatkan pointer
+	keyboard := h.createSettingsKeyboard(lang, user)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) updateSettingsMessage(chatID int64, messageID int, user *database.User) {
+	lang := user.LanguageCode
+	args := map[string]string{
+		"aspect_ratio": user.AspectRatio,
+		"num_images":   strconv.Itoa(user.NumOutputs),
+	}
+	text := h.Localizer.Getf(lang, "settings_menu", args)
+
+	// PERBAIKAN: Tambahkan '&' untuk mendapatkan pointer
+	keyboard := h.createSettingsKeyboard(lang, user)
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
 
 func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	parts := strings.Split(callback.Data, ":")
@@ -229,7 +271,51 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		h.handleTemplateSelection(callback, data)
 	case "cancel_flow": // LOGIKA BARU UNTUK TOMBOL BATAL
 		h.handleCancelCallback(callback)
+	case "settings_aspect_ratio":
+		lang := h.getUserLang(callback.From.ID)
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, h.Localizer.Get(lang, "select_aspect_ratio"))
+		// PERBAIKAN: Tambahkan '&' untuk mendapatkan pointer
+		keyboard := h.createAspectRatioKeyboard(lang)
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+
+	case "settings_num_images":
+		lang := h.getUserLang(callback.From.ID)
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, h.Localizer.Get(lang, "select_num_images"))
+		// PERBAIKAN: Tambahkan '&' untuk mendapatkan pointer
+		keyboard := h.createNumOutputsKeyboard(lang)
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+
+	case "set_ar":
+		// PERBAIKAN: Ambil semua bagian setelah "set_ar:"
+		// Ini akan memastikan "9:16" terbaca utuh
+		aspectRatioValue := strings.TrimPrefix(callback.Data, "set_ar:")
+		
+		user, _ := h.getOrCreateUser(callback.From)
+		user.AspectRatio = aspectRatioValue // Gunakan nilai yang sudah benar
+		h.DB.UpdateUser(user)
+		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+
+	case "set_num":
+		user, _ := h.getOrCreateUser(callback.From)
+		num, _ := strconv.Atoi(data)
+		user.NumOutputs = num
+		h.DB.UpdateUser(user)
+		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+	case "settings_back_to_main":
+        user, _ := h.getOrCreateUser(callback.From)
+        h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+
 	}
+}
+
+func (h *Handler) getUserLang(userID int64) string {
+	user, err := h.DB.GetUserByTelegramID(userID)
+	if err != nil || user == nil {
+		return "en" // default
+	}
+	return user.LanguageCode
 }
 
 func (h *Handler) handleCancel(message *tgbotapi.Message) {
@@ -290,11 +376,21 @@ func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, temp
 		return
 	}
 	user, _ := h.getOrCreateUser(callback.From)
+	// Panggil trigger tanpa URL gambar
 	h.triggerImageGeneration(user, modelID, selectedTemplate.Prompt, callback.Message.Chat.ID)
+	
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
 	h.Bot.Send(deleteMsg)
 }
 
+func (h *Handler) getFileURL(fileID string) (string, error) {
+	fileConfig := tgbotapi.FileConfig{FileID: fileID}
+	file, err := h.Bot.GetFile(fileConfig)
+	if err != nil {
+		return "", err
+	}
+	return file.Link(h.Bot.Token), nil
+}
 
 func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID string) {
 	user, err := h.getOrCreateUser(callback.From)
@@ -323,14 +419,40 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 	}
 
 	h.userStates[user.TelegramID] = modelID
-	text := h.Localizer.Get(lang, "enter_prompt")
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
 
-	// Buat keyboard dengan tombol Template dan Batal
-	templateButton := tgbotapi.NewInlineKeyboardButtonData("✨ Choose from Template", "show_templates:0")
-	cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(templateButton, cancelButton))
-	
+	var text string
+	// Siapkan argumen yang akan diisi
+	args := map[string]string{
+		"model_name":        selectedModel.Name,
+		"model_description": selectedModel.Description,
+	}
+
+	// Pilih template teks yang benar berdasarkan kemampuan model
+	if selectedModel.AcceptsImageInput {
+		text = h.Localizer.Getf(lang, "enter_prompt_with_image_option", args)
+	} else {
+		text = h.Localizer.Getf(lang, "enter_prompt", args)
+	}
+	// -- AKHIR PERBAIKAN LOGIKA --
+
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+	msg.ParseMode = "HTML"
+
+	// Tampilkan tombol template/batal hanya jika model tidak wajib gambar
+	// (karena template tidak bisa mengirim gambar)
+	if !selectedModel.AcceptsImageInput {
+		templateButton := tgbotapi.NewInlineKeyboardButtonData("✨ Choose from Template", "show_templates:0")
+		cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(templateButton, cancelButton))
+		msg.ReplyMarkup = &keyboard
+	} else {
+		// Jika model mendukung gambar, cukup beri opsi batal
+		cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(cancelButton))
+		msg.ReplyMarkup = &keyboard
+	}
+
+
 	h.Bot.Send(msg)
 
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
@@ -342,12 +464,35 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	if !ok {
 		return
 	}
+
 	user, _ := h.getOrCreateUser(message.From)
-	h.triggerImageGeneration(user, modelID, message.Text, message.Chat.ID)
+	var prompt, imageURL string
+
+	// PERUBAHAN: Cek apakah pesan berisi foto
+	if message.Photo != nil && len(message.Photo) > 0 {
+		// Ambil foto dengan resolusi tertinggi
+		bestPhoto := message.Photo[len(message.Photo)-1]
+		url, err := h.getFileURL(bestPhoto.FileID)
+		if err != nil {
+			log.Printf("ERROR: Failed to get file URL for photo: %v", err)
+			return
+		}
+		imageURL = url
+		prompt = message.Caption // Gunakan caption sebagai prompt
+	} else {
+		prompt = message.Text // Gunakan teks biasa sebagai prompt
+	}
+
+	if prompt == "" {
+		// Jangan proses jika tidak ada prompt
+		return
+	}
+
+	h.triggerImageGeneration(user, modelID, prompt, message.Chat.ID, imageURL)
 }
 
 
-func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt string, chatID int64) {
+func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt string, chatID int64, imageURL ...string) {
 	delete(h.userStates, user.TelegramID)
 	lang := user.LanguageCode
 
@@ -358,7 +503,34 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 			break
 		}
 	}
-	if selectedModel == nil || user.Credits < selectedModel.Cost {
+	if selectedModel == nil {
+		return
+	}
+
+	// --- LOGIKA BARU: Ambil settings dan sesuaikan ---
+	var aspectRatio string
+	var numOutputs int
+
+	// Hanya gunakan pengaturan jika model mendukungnya
+	if selectedModel.ConfigurableAspectRatio {
+		aspectRatio = user.AspectRatio
+	}
+	if selectedModel.ConfigurableNumOutputs {
+		numOutputs = user.NumOutputs
+	} else {
+		numOutputs = 1 // Default ke 1 jika tidak bisa dikonfigurasi
+	}
+
+	// Periksa kredit vs total biaya
+	totalCost := selectedModel.Cost * numOutputs
+	if user.Credits < totalCost {
+		// Anda bisa menambahkan pesan error yang lebih spesifik di sini jika mau
+		insufficientArgs := map[string]string{
+			"required": strconv.Itoa(totalCost),
+			"balance":  strconv.Itoa(user.Credits),
+		}
+		msg := tgbotapi.NewMessage(chatID, h.Localizer.Getf(lang, "insufficient_credits", insufficientArgs))
+		h.Bot.Send(msg)
 		return
 	}
 
@@ -366,17 +538,23 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	sentMsg, _ := h.Bot.Send(waitMsg)
 	defer h.Bot.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID))
 
-	// Konteks sederhana, tidak perlu bisa dibatalkan dari luar
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt)
+	// Teruskan settings ke CreatePrediction
+	var finalImageURL string
+	if len(imageURL) > 0 {
+		finalImageURL = imageURL[0]
+	}
+	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, aspectRatio, numOutputs)
+
 	if err != nil || len(imageUrls) == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(chatID, h.Localizer.Get(lang, "generation_failed")))
 		return
 	}
 
-	user.Credits -= selectedModel.Cost
+	// Kurangi kredit berdasarkan total biaya
+	user.Credits -= totalCost
 	user.GeneratedImageCount++
 	h.DB.UpdateUser(user)
 
@@ -390,7 +568,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	}
 
 	safePrompt := html.EscapeString(prompt)
-	caption := fmt.Sprintf("Prompt: <code>%s</code>\nModel: %s\nCost: %d 💎", safePrompt, selectedModel.Name, selectedModel.Cost)
+	caption := fmt.Sprintf("Prompt: <code>%s</code>\nModel: %s\nCost: %d 💎", safePrompt, selectedModel.Name, totalCost)
 
 	if len(imageUrls) == 1 {
 		msg := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(imageUrls[0]))
@@ -555,9 +733,17 @@ func (h *Handler) getOrCreateUser(tgUser *tgbotapi.User) (*database.User, error)
 func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
 	lang := user.LanguageCode
-	text := h.Localizer.Get(lang, "choose_model")
+
+	args := map[string]string{
+		"aspect_ratio": user.AspectRatio,
+		"num_images":   strconv.Itoa(user.NumOutputs),
+	}
+
+	text := h.Localizer.Getf(lang, "choose_model", args)
+
 	keyboard := h.createModelSelectionKeyboard(h.Models, lang, 0)
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	msg.ReplyMarkup = keyboard
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
 }

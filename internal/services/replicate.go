@@ -21,9 +21,20 @@ func NewReplicateClient(apiToken string) (*ReplicateClient, error) {
 	return &ReplicateClient{client: r8}, nil
 }
 
-func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID string, prompt string) ([]string, error) {
+func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, aspectRatio string, numOutputs int) ([]string, error) {
 	input := replicate.PredictionInput{
 		"prompt": prompt,
+	}
+
+	// Tambahkan parameter opsional ke input jika nilainya ada
+	if imageURL != "" {
+		input["input_image"] = imageURL
+	}
+	if aspectRatio != "" {
+		input["aspect_ratio"] = aspectRatio
+	}
+	if numOutputs > 0 {
+		input["num_outputs"] = numOutputs
 	}
 
 	output, err := c.client.Run(ctx, modelID, input, nil)
@@ -32,10 +43,7 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID string, 
 		return nil, err
 	}
 
-	// PERBAIKAN DIMULAI DI SINI: Membuat kode lebih fleksibel
 	var urls []string
-
-	// Coba proses sebagai slice/daftar (format paling umum)
 	if outputSlice, ok := output.([]interface{}); ok {
 		for _, item := range outputSlice {
 			if url, ok := item.(string); ok {
@@ -45,12 +53,10 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID string, 
 		return urls, nil
 	}
 
-	// Jika gagal, coba proses sebagai string tunggal
 	if outputString, ok := output.(string); ok {
 		urls = append(urls, outputString)
 		return urls, nil
 	}
-	// AKHIR PERBAIKAN
 
 	err = fmt.Errorf("prediction output is in an unknown format")
 	log.Printf("ERROR: %v", err)
