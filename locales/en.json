@@ -51,7 +51,7 @@
   "topup_select_method": "<b>Add Credits</b>\n\nYou can top up your credits automatically using <b>Telegram Stars</b> ⭐️ or via <b>Manual Payment</b>.\n\nPlease choose your preferred method below:",
   "topup_select_package": "<b>⭐ Choose Your Package</b>\n\n<b>Starter</b>\n• Get: 100 Stars\n• Receive: 100 Credits\n<i>Perfect for getting started.</i>\n\n<b>Creator</b> - <i>Most Popular</i>\n• Get: 500 Stars\n• Receive: 550 Credits\n<i>Includes <b>50 Bonus Credits</b>.</i>\n\n<b>Pro</b> - <i>Best Value</i>\n• Get: 1,000 Stars\n• Receive: 1,400 Credits\n<i>Includes a massive <b>400 Bonus Credits</b>.</i>",
   "topup_success": "✅ Top-up successful! *{credits}* credits have been added to your account.\nYour new balance: *{balance}* 💵",
-  "topup_error_admin": "❌ Terjadi kesalahan saat menambahkan kredit setelah pembayaran. Mohon hubungi admin."
+  "topup_error_admin": "❌ An error occurred while adding credit after payment. Please contact admin."
 
 
   }

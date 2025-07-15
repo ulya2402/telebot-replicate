@@ -100,6 +100,10 @@ func (h *Handler) createLanguageSelectionKeyboard() tgbotapi.InlineKeyboardMarku
 			tgbotapi.NewInlineKeyboardButtonData("English 🇬🇧", "lang_select:en"),
 			tgbotapi.NewInlineKeyboardButtonData("Bahasa Indonesia 🇮🇩", "lang_select:id"),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			// --- BARIS YANG DITAMBAHKAN ---
+			tgbotapi.NewInlineKeyboardButtonData("Русский 🇷🇺", "lang_select:ru"),
+		),
 	)
 	return keyboard
 }

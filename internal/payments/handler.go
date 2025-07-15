@@ -78,19 +78,19 @@ func (ph *PaymentHandler) HandleStarsInvoice(chatID int64, packageID string) {
 		chatID,
 		selectedPackage.Title,
 		selectedPackage.Description,
-		packageID, // payload
-		"",        // provider_token (dikosongkan untuk Stars)
-		"",        // start_parameter (bisa kosong)
-		"XTR",     // currency (wajib "XTR" untuk Stars)
+		packageID,
+		ph.Token, // Menggunakan token pembayaran yang benar
+		"start_parameter", // Parameter ini bisa diisi string kosong atau dummy
+		"XTR",
 		[]tgbotapi.LabeledPrice{
 			{Label: fmt.Sprintf("%d Credits", selectedPackage.CreditsAmount), Amount: selectedPackage.StarsAmount},
 		},
 	)
+	
+	// Tambahan parameter wajib dari Telegram API
+	invoice.MaxTipAmount = 0
+	invoice.SuggestedTipAmounts = []int{}
 
-	// 2. Tambahkan parameter Tip yang sekarang diwajibkan oleh Telegram.
-	// Ini untuk memperbaiki error "expected an Array of suggested tip amounts".
-	invoice.MaxTipAmount = 0       // Kita tidak ingin ada tip maksimal.
-	invoice.SuggestedTipAmounts = []int{} // Kirim array kosong.
 
 	// --- SELESAI PERBAIKAN ---
 
