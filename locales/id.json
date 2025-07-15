@@ -51,5 +51,5 @@
   "topup_select_method": "<b>Tambah Kredit</b>\n\nKamu bisa menambah kredit secara otomatis menggunakan <b>Telegram Stars</b> ⭐️ atau melalui <b>Pembayaran Manual</b>.\n\nSilakan pilih metode yang kamu inginkan di bawah ini:",
   "topup_select_package": "<b>⭐ Pilih Paket Kamu</b>\n\n<b>Pemula</b>\n• Dapat: 100 Bintang\n• Terima: 100 Kredit\n<i>Sempurna untuk memulai.</i>\n\n<b>Kreator</b> - <i>Paling Populer</i>\n• Dapat: 500 Bintang\n• Terima: 550 Kredit\n<i>Termasuk <b>Bonus 50 Kredit</b>.</i>\n\n<b>Pro</b> - <i>Paling Hemat</i>\n• Dapat: 1.000 Bintang\n• Terima: 1.400 Kredit\n<i>Termasuk bonus besar <b>400 Kredit</b>.</i>",
   "topup_success": "✅ Top-up berhasil! *{credits}* kredit telah ditambahkan ke akunmu.\nSaldo barumu: *{balance}* 💵",
-  "topup_error_admin": "❌ Terjadi kesalahan saat menambahkan kredit setelah pembayaran. Mohon hubungi admin."
+  "topup_error_admin": "❌ Terjadi kesalahan saat menambahkan kredit setelah pembayaran. Mohon hubungi @botaralabs."
 }
