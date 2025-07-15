@@ -17,6 +17,7 @@ type Config struct {
 	SupabaseServiceKey string
 	ReplicateAPIToken  string
 	AdminTelegramIDs   []int64
+	WelcomeImageURL    string
 }
 
 type Model struct {
@@ -67,6 +68,7 @@ func Load() *Config {
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 		ReplicateAPIToken:  getEnv("REPLICATE_API_TOKEN", ""),
 		AdminTelegramIDs:   adminIDs,
+		WelcomeImageURL:    getEnv("WELCOME_IMAGE_URL", ""),
 	}
 }
 

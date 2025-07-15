@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"net/url"
 	"strings"
 	"telegram-ai-bot/internal/config"
 	"telegram-ai-bot/internal/database"
@@ -253,6 +254,12 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 
 	h.Bot.Request(tgbotapi.NewCallback(callback.ID, ""))
 
+	dummyMessage := &tgbotapi.Message{
+		From: callback.From,
+		Chat: &tgbotapi.Chat{ID: callback.Message.Chat.ID},
+	}
+
+
 	switch action {
 	case "model_page":
 		page, _ := strconv.Atoi(data)
@@ -306,6 +313,29 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	case "settings_back_to_main":
         user, _ := h.getOrCreateUser(callback.From)
         h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+	
+	case "main_menu_generate":
+		// Panggil logika /img, tapi sebagai callback
+		h.handleImageCommand(dummyMessage)
+	
+	case "main_menu_settings":
+		h.handleSettings(dummyMessage)
+
+	case "main_menu_language":
+		h.handleLang(dummyMessage)
+		
+
+	case "main_menu_help":
+		h.handleHelp(dummyMessage)
+
+
+	case "main_menu_referral":
+		h.handleReferral(dummyMessage)
+
+	case "main_menu_back":
+		// Kembali ke menu utama dari halaman lain
+		h.handleStart(dummyMessage)
+
 
 	}
 }
@@ -558,7 +588,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	user.GeneratedImageCount++
 	h.DB.UpdateUser(user)
 
-	if user.GeneratedImageCount == 3 && user.ReferrerID != 0 {
+	if user.GeneratedImageCount == 2 && user.ReferrerID != 0 {
 		referrer, err := h.DB.GetUserByTelegramID(user.ReferrerID)
 		if err == nil && referrer != nil {
 			referrer.Credits += 5
@@ -568,7 +598,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	}
 
 	safePrompt := html.EscapeString(prompt)
-	caption := fmt.Sprintf("Prompt: <code>%s</code>\nModel: %s\nCost: %d 💎", safePrompt, selectedModel.Name, totalCost)
+	caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💵", safePrompt, selectedModel.Name, totalCost)
 
 	if len(imageUrls) == 1 {
 		msg := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(imageUrls[0]))
@@ -600,25 +630,74 @@ func (h *Handler) navigateModels(callback *tgbotapi.CallbackQuery, page int) {
 
 // Sisa fungsi-fungsi dari langkah sebelumnya (TIDAK BERUBAH)
 func (h *Handler) handleStart(message *tgbotapi.Message) {
-	user, _ := h.getOrCreateUser(message.From)
-	if strings.HasPrefix(message.CommandArguments(), "ref_") && user.ReferrerID == 0 {
-		referrerID, err := strconv.ParseInt(strings.TrimPrefix(message.CommandArguments(), "ref_"), 10, 64)
-		if err == nil && referrerID != user.TelegramID {
-			user.ReferrerID = referrerID
-			h.DB.UpdateUser(user)
-			log.Printf("INFO: User %d was referred by %d", user.TelegramID, referrerID)
+	// Cek dulu apakah pengguna sudah ada di database
+	user, err := h.DB.GetUserByTelegramID(message.From.ID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get user on start: %v", err)
+		return
+	}
+
+	// --- LOGIKA BARU UNTUK PENGGUNA BARU ---
+	if user == nil {
+		// Jika pengguna tidak ada, ini adalah pengguna baru.
+		var referrerID int64
+		
+		// Cek dan proses ID referral SEBELUM membuat pengguna
+		if strings.HasPrefix(message.CommandArguments(), "ref_") {
+			parsedID, err := strconv.ParseInt(strings.TrimPrefix(message.CommandArguments(), "ref_"), 10, 64)
+			// Pastikan pengguna tidak mereferensikan dirinya sendiri
+			if err == nil && parsedID != message.From.ID {
+				referrerID = parsedID
+			}
+		}
+
+		// Siapkan data pengguna baru, termasuk ID referral jika ada
+		newUser := database.User{
+			TelegramID:   message.From.ID,
+			Username:     message.From.UserName,
+			Credits:      5,
+			LastReset:    time.Now(),
+			LanguageCode: "en",
+			AspectRatio:  "1:1",
+			NumOutputs:   1,
+			ReferrerID:   referrerID, // ID referral langsung dimasukkan di sini
+		}
+
+		// Buat pengguna baru di database
+		user, err = h.DB.CreateUser(newUser)
+		if err != nil {
+			log.Printf("ERROR: Failed to create user on start: %v", err)
+			return
+		}
+		
+		if referrerID != 0 {
+			log.Printf("INFO: User %d created with referral from %d", user.TelegramID, referrerID)
 		}
 	}
-	welcomeArgs := map[string]string{"name": message.From.FirstName}
-	text := h.Localizer.Getf(user.LanguageCode, "welcome", welcomeArgs)
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	h.Bot.Send(msg)
+
+	// --- Sisa fungsi (mengirim pesan sambutan) tidak berubah ---
+	lang := user.LanguageCode
+	args := map[string]string{
+		"name":         message.From.FirstName,
+		"aspect_ratio": user.AspectRatio,
+		"num_images":   strconv.Itoa(user.NumOutputs),
+	}
+	caption := h.Localizer.Getf(lang, "welcome", args)
+	photoMsg := tgbotapi.NewPhoto(message.Chat.ID, tgbotapi.FileURL(h.Config.WelcomeImageURL))
+	photoMsg.Caption = caption
+	photoMsg.ParseMode = "HTML"
+	keyboard := h.createMainMenuKeyboard(lang)
+	photoMsg.ReplyMarkup = &keyboard
+	h.Bot.Send(photoMsg)
 }
 
 func (h *Handler) handleHelp(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
-	text := h.Localizer.Get(user.LanguageCode, "help")
+	lang := user.LanguageCode
+	text := h.Localizer.Get(lang, "help")
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	keyboard := h.createBackToMenuKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
 }
 
@@ -629,17 +708,29 @@ func (h *Handler) handleProfile(message *tgbotapi.Message) {
 	}
 	lang := user.LanguageCode
 	var resetTimeStr string
+
 	if user.IsPremium {
 		resetTimeStr = "N/A (Premium)"
 	} else {
-		nextReset := user.LastReset.Add(24 * time.Hour)
-		duration := time.Until(nextReset)
+		// --- PERBAIKAN LOGIKA PERHITUNGAN WAKTU ---
+		// 1. Dapatkan waktu saat ini dalam zona waktu UTC
+		nowUTC := time.Now().UTC()
+		
+		// 2. Hitung waktu reset berikutnya, yaitu pukul 00:00 UTC (07:00 WIB) pada HARI BERIKUTNYA
+		// Ini memastikan kita selalu menunjuk ke masa depan
+		nextResetUTC := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC).Add(24 * time.Hour)
+
+		// 3. Hitung durasi dari sekarang hingga waktu reset berikutnya
+		duration := time.Until(nextResetUTC)
+
 		if duration <= 0 {
+			// Ini seharusnya tidak terjadi lagi, tapi sebagai pengaman
 			resetTimeStr = h.Localizer.Get(lang, "time_now")
 		} else {
 			resetTimeStr = h.formatDuration(duration, lang)
 		}
 	}
+
 	args := map[string]string{
 		"id":         strconv.FormatInt(user.TelegramID, 10),
 		"credits":    strconv.Itoa(user.Credits),
@@ -658,13 +749,26 @@ func (h *Handler) handleReferral(message *tgbotapi.Message) {
 	}
 	lang := user.LanguageCode
 	referralLink := fmt.Sprintf("https://t.me/%s?start=ref_%d", h.Bot.Self.UserName, user.TelegramID)
-	text := fmt.Sprintf("%s\n\n%s\n`%s`",
+	text := fmt.Sprintf("%s\n\n%s\n%s",
 		h.Localizer.Get(lang, "referral_message"),
 		h.Localizer.Get(lang, "referral_link_text"),
 		referralLink,
 	)
+	shareText := url.QueryEscape(fmt.Sprintf("Come join this cool AI image bot! Use my link to get a bonus:😉\n %s", referralLink))
+	shareURL := fmt.Sprintf("https://t.me/share/url?url=%s", shareText)
+
+	// Buat keyboard dengan tombol "Share"
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL("🚀 Share with Friends", shareURL),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "main_menu_back"),
+		),
+	)
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	msg.ParseMode = "Markdown"
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
 }
 
@@ -720,6 +824,8 @@ func (h *Handler) getOrCreateUser(tgUser *tgbotapi.User) (*database.User, error)
 			Credits:      5,          // <-- Tambahkan ini
 			LastReset:    time.Now(), // <-- Tambahkan ini
 			LanguageCode: "en", 
+			AspectRatio:  "1:1", // <-- Tambahkan ini
+			NumOutputs:   1,
 		}
 		user, err = h.DB.CreateUser(newUser)
 		if err != nil {

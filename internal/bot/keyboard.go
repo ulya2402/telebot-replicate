@@ -30,7 +30,7 @@ func (h *Handler) createModelSelectionKeyboard(models []config.Model, lang strin
 
 	var row []tgbotapi.InlineKeyboardButton
 	for i, model := range paginatedModels {
-		buttonText := fmt.Sprintf("%s (%d 💎)", model.Name, model.Cost)
+		buttonText := fmt.Sprintf("%s (%d 💵)", model.Name, model.Cost)
 		callbackData := fmt.Sprintf("model_select:%s", model.ID)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData))
 
@@ -164,3 +164,27 @@ func (h *Handler) createNumOutputsKeyboard(lang string) tgbotapi.InlineKeyboardM
 	)
 }
 
+func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate"), "main_menu_generate"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_settings"), "main_menu_settings"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_language"), "main_menu_language"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_help"), "main_menu_help"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_referral"), "main_menu_referral"),
+		),
+	)
+}
+
+// Fungsi baru untuk tombol Back ke menu utama
+func (h *Handler) createBackToMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "main_menu_back"),
+		),
+	)
+}
