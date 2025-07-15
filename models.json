@@ -22,7 +22,8 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
-      "description":"Imagen 4 Fast is the faster version of Google’s Imagen 4 model. It’s perfect when you care more about speed and lower cost than ultra-high quality. You can still adjust the image’s aspect ratio, but the number of outputs is fixed. Great for quick drafts or early-stage ideas."
+      "description":"Imagen 4 Fast is the faster version of Google Imagen 4 model. Its perfect when you care more about speed and lower cost than ultra-high quality. You can still adjust the image aspect ratio, but the number of outputs is fixed. Great for quick drafts or early-stage ideas.",
+      "show_templates": false
     },
     {
       "id": "imagen-3-fast",
@@ -34,6 +35,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Imagen 3 Fast is a faster and more affordable version of Imagen 3. It’s perfect when speed or cost matters more than the highest image quality. You can still adjust the aspect ratio, but the number of outputs is fixed. Great for fast prototyping or testing out ideas."
     },
     {
@@ -46,6 +48,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": true,
+      "show_templates": false,
       "description":"Flux Dev Lora is a special version of the Flux Dev text-to-image model that supports fast LoRA (Low-Rank Adaptation) inference. It’s great for generating images with fine-tuned styles based on your needs. You can customize both the aspect ratio and the number of outputs, making it super flexible for creative exploration."
     },
     {
@@ -58,6 +61,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Recraft V3 (code-named red_panda) is a powerful text-to-image model that can generate images in many different styles — and it can even create images with long text. Right now, it’s considered one of the best in the world, proven by the Text-to-Image Benchmark from Artificial Analysis. You can adjust the aspect ratio, but the number of outputs is fixed."
     },
     {
@@ -70,6 +74,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Imagen 4 is Google’s flagship text-to-image model. It delivers high-quality, detailed, and accurate visuals from text prompts. Perfect for when you need top-tier image generation. You can customize the aspect ratio, but the number of outputs is fixed."
     },
     {
@@ -82,6 +87,7 @@
       "accepts_image_input": true,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description": "Flux Kontext Pro is a cutting-edge image editing model that works using text prompts. You can transform or modify images using natural language, and it delivers high-quality, accurate, and consistent results. It supports image input and aspect ratio adjustments — perfect for seamless and smart image editing."
     },
     {
@@ -94,6 +100,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Gen 4 by Runway is a next-gen image model that lets you create highly accurate images. Perfect for generating exactly what you have in mind. You can adjust the aspect ratio, but the number of outputs is fixed."
     },
     {
@@ -106,6 +113,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Flux Pro is a premium image generation model that delivers top-tier results. It excels in prompt accuracy, stunning visual quality, sharp details, and a wide variety of outputs. Perfect for high-level creative or professional projects. Aspect ratio is customizable, but the number of outputs is fixed."
     },
     {
@@ -118,6 +126,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Ideogram V3 Balanced is an AI model that strikes the perfect balance between speed, quality, and cost. It generates images with stunning realism, creative design, and consistent visual style. Great for anyone looking for professional-grade results without compromising on efficiency. Aspect ratio is adjustable, but output count is fixed."
     },
     {
@@ -130,6 +139,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Imagen 4 Ultra is the top-tier version of Google Imagen 4, built for when image quality matters most. Ideal for projects where you want stunning detail and premium visuals, even if it takes more time and cost. Aspect ratio is adjustable, but the number of outputs is fixed."
     },
     {
@@ -142,6 +152,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Stable Diffusion 3.5 Large is an advanced text-to-image model that generates high-resolution images with fine detail. It supports a variety of artistic styles and produces diverse outputs from a single prompt. You can adjust the aspect ratio, but the number of outputs is fixed. Great for high-quality visual exploration."
     },
     {
@@ -154,6 +165,7 @@
       "accepts_image_input": true,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description":"Flux Kontext Max is a premium text-based image editing model built for maximum performance. It offers major improvements in typography generation and transforms images through natural language prompts. You can upload image inputs, adjust the aspect ratio, and choose the number of outputs — perfect for high-end design work and creative storytelling."
     },
     {
@@ -166,6 +178,7 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
+      "show_templates": false,
       "description": "Recraft V3 SVG (code-named red_panda) is a text-to-image model with the ability to generate high quality SVG images including logotypes, and icons. The model supports a wide list of styles."
     }
   ]
