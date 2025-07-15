@@ -9,7 +9,8 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": true,
-      "description": "Flux Schnell is an AI model that generates images really fast! Perfect if you need quick results without waiting around. Even though it’s super speedy, the image quality still looks great and detailed. It’s also flexible — you can set the aspect ratio and how many images you want."
+      "description": "Flux Schnell is an AI model that generates images really fast! Perfect if you need quick results without waiting around. Even though it’s super speedy, the image quality still looks great and detailed. It’s also flexible — you can set the aspect ratio and how many images you want.",
+      "show_templates": false
     },
     {
       "id": "imagen-4-fast",

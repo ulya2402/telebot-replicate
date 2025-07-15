@@ -6,7 +6,7 @@
   "button_help": "❓ Help",
   "button_referral": "🎁 Referral",
     "help": "Here are the available commands:\n/img - Start image generation\n/profile - View your profile and credits\n/referral - Get your referral link\n/lang - Change language",
-    "profile": "👤 *Profile*\n\n*ID*: `{id}`\n*Credits*: `{credits}` 💵\n*Next free credits in*: `{reset_time}`",
+"profile": "👤 *Your Profile*\n\n*Credits*\n▸ Total: *{total_credits}* 💵\n▸ Paid: `{paid_credits}`\n▸ Free: `{free_credits}`\n\n*Want to earn extra credits? Invite friends and get bonuses!*\n\n_Next free credits in: {reset_time}_",
     "referral_message": "Share this link with your friends! You'll get 5 💵.",
     "referral_link_text": "<b>Your referral link:</b>",
     "insufficient_credits": "You don't have enough credits for this model. Required: {required} 💵, You have: {balance} 💵.",
@@ -38,5 +38,16 @@
     "select_aspect_ratio": "Please select your desired aspect ratio:",
     "select_num_images": "Please select how many images to generate at once:",
     "settings_updated": "✅ Settings updated.",
-    "back_button": "⬅️ Back"
+    "back_button": "⬅️ Back",
+    "multiple_images_warning": "\n\n⚠️ <b>You are about to generate {num_images} images. Total cost: {total_cost} 💵</b>",
+    "referral_bonus_notification": "🎉 *Referral Bonus!* 🎉\n\nYou have received *5 💵* from a friend you invited. Thank you for helping our community grow!",
+    "referral_section_title": "🎁 *Referral Program*",
+    "referral_progress_text": "Invite {remaining} more friends to get a bonus!",
+    "referral_progress_bar": "`[{progress_bar}] {current}/{total}`",
+    "raw_file_prompt": "Do you want the original, uncompressed files?",
+"raw_download_button": "📄 Download RAW",
+"raw_files_sent": "✅ RAW files sent.",
+"raw_files_not_found": "Sorry, the links for these files have expired or are no longer available."
+
+
   }

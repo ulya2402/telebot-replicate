@@ -39,6 +39,6 @@ func main() {
 	updates := api.GetUpdatesChan(u)
 
 	for update := range updates {
-		handler.HandleUpdate(update)
+		go handler.HandleUpdate(update)
 	}
 }

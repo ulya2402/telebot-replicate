@@ -31,6 +31,7 @@ type Model struct {
 	AcceptsImageInput bool   `json:"accepts_image_input"`
 	ConfigurableAspectRatio bool `json:"configurable_aspect_ratio"` // <-- Tambahkan ini
 	ConfigurableNumOutputs  bool `json:"configurable_num_outputs"`
+	ShowTemplates             bool   `json:"show_templates"`
 }
 
 type PromptTemplate struct {

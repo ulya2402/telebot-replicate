@@ -14,8 +14,9 @@ type User struct {
 	ID                  int64     `json:"id,omitempty"`
 	TelegramID          int64     `json:"telegram_id"`
 	Username            string    `json:"username"`
-	Credits             int       `json:"credits"`
-	LastReset           time.Time `json:"last_reset"`
+	PaidCredits          int       `json:"paid_credits"`            // <-- PERUBAHAN: Dari Credits
+	FreeCredits          int       `json:"free_credits"`            // <-- BARU: Dompet kredit gratis
+	LastFreeCreditsReset time.Time `json:"last_free_credits_reset"`
 	IsPremium           bool      `json:"is_premium"`
 	LanguageCode        string    `json:"language_code"`
 	ReferrerID          int64     `json:"referrer_id,omitempty"`
@@ -52,7 +53,7 @@ func (c *Client) GetUserByTelegramID(telegramID int64) (*User, error) {
 	return &results[0], nil
 }
 
-func (c *Client) CreateUser(user User) (*User, error) {
+func (c *Client) CreateUser(user *User) (*User, error) {
 	var results []User
 	// PERBAIKAN: Menambahkan _ untuk menangani nilai kembalian kedua
 	_, err := c.From("users").Insert(user, false, "do-nothing", "", "exact").ExecuteTo(&results)
@@ -62,7 +63,8 @@ func (c *Client) CreateUser(user User) (*User, error) {
 	}
 
 	if len(results) == 0 {
-		return c.GetUserByTelegramID(user.TelegramID)
+		log.Printf("INFO: User %d created (or already existed). Returning in-memory object.", user.TelegramID)
+		return user, nil
 	}
 
 	log.Printf("INFO: User %d created successfully", user.TelegramID)
