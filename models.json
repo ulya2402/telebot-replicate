@@ -162,7 +162,7 @@
       "replicate_id": "recraft-ai/recraft-v3-svg",
       "tier": "premium",
       "cost": 26,
-      "enabled": true,
+      "enabled": false,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
