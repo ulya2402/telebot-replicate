@@ -8,6 +8,7 @@ import (
 	"net/http"  // <-- TAMBAHKAN
 	"path/filepath" // <-- TAMBAHKAN
 	"strconv"
+	"telegram-ai-bot/internal/payments"
 	"net/url"
 	"sync"
 	"strings"
@@ -34,9 +35,10 @@ type Handler struct {
 	Config          *config.Config
 	lastGeneratedURLs     map[int64][]string // <-- BARU: Untuk menyimpan URL RAW
 	lastGeneratedURLsMutex sync.Mutex 
+	PaymentHandler *payments.PaymentHandler
 }
 
-func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config) *Handler {
+func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
 	return &Handler{
 		Bot:             api,
 		DB:              db,
@@ -47,6 +49,7 @@ func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localizati
 		userStates:      make(map[int64]string),
 		Config:          cfg, // <-- Sekarang 'cfg' dikenal dan bisa digunakan
 		lastGeneratedURLs:     make(map[int64][]string),
+		PaymentHandler: paymentHandler,
 	}
 }
 
@@ -61,6 +64,10 @@ func (h *Handler) isAdmin(userID int64) bool {
 
 func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 	switch {
+	case update.PreCheckoutQuery != nil:
+		h.PaymentHandler.HandlePreCheckoutQuery(update.PreCheckoutQuery)
+	case update.Message != nil && update.Message.SuccessfulPayment != nil:
+		h.PaymentHandler.HandleSuccessfulPayment(update.Message)
 	case update.Message != nil:
 		if update.Message.IsCommand() {
 			h.handleCommand(update.Message)
@@ -107,6 +114,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleBroadcast(message)
 	case "settings":
 		h.handleSettings(message)
+	case "topup":
+		h.PaymentHandler.ShowTopUpOptions(message.Chat.ID)
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Unknown command")
 		h.Bot.Send(msg)
@@ -267,6 +276,12 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		Chat: &tgbotapi.Chat{ID: callback.Message.Chat.ID},
 	}
 
+	if strings.HasPrefix(action, "buy_stars") {
+		packageID := strings.Split(callback.Data, ":")[1]
+		h.PaymentHandler.HandleStarsInvoice(callback.Message.Chat.ID, packageID)
+		return
+	}
+
 
 	switch action {
 	case "model_page":
@@ -346,6 +361,11 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	case "main_menu_back":
 		// Kembali ke menu utama dari halaman lain
 		h.handleStart(dummyMessage)
+	
+	case "topup_stars": // <-- BARU
+		h.PaymentHandler.ShowStarsPackages(callback.Message.Chat.ID)
+	case "topup_manual": // <-- BARU
+		h.PaymentHandler.ShowManualPaymentInfo(callback.Message.Chat.ID)
 
 
 	}
@@ -786,6 +806,7 @@ func (h *Handler) handleHelp(message *tgbotapi.Message) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	keyboard := h.createBackToMenuKeyboard(lang)
 	msg.ReplyMarkup = &keyboard
+	msg.ParseMode = "html"
 	h.Bot.Send(msg)
 }
 

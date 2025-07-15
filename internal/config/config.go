@@ -18,6 +18,8 @@ type Config struct {
 	ReplicateAPIToken  string
 	AdminTelegramIDs   []int64
 	WelcomeImageURL    string
+	PaymentProviderToken string `json:"payment_provider_token"` // <-- BARU
+	ManualPaymentInfo    string `json:"manual_payment_info"`
 }
 
 type Model struct {
@@ -70,6 +72,8 @@ func Load() *Config {
 		ReplicateAPIToken:  getEnv("REPLICATE_API_TOKEN", ""),
 		AdminTelegramIDs:   adminIDs,
 		WelcomeImageURL:    getEnv("WELCOME_IMAGE_URL", ""),
+		PaymentProviderToken: getEnv("PAYMENT_PROVIDER_TOKEN", ""), // <-- BARU
+		ManualPaymentInfo:    getEnv("MANUAL_PAYMENT_INFO", "Untuk pembayaran manual, silakan transfer ke:\nBank ABC: `1234567890` a.n. John Doe\n\nKirim bukti transfer ke @Admin."), // <-- BARU
 	}
 }
 

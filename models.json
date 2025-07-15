@@ -93,7 +93,8 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Gen 4 by Runway is a next-gen image model that lets you create highly accurate images. Perfect for generating exactly what you have in mind. You can adjust the aspect ratio, but the number of outputs is fixed."
     },
     {
       "id": "flux-pro",
@@ -104,7 +105,8 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Flux Pro is a premium image generation model that delivers top-tier results. It excels in prompt accuracy, stunning visual quality, sharp details, and a wide variety of outputs. Perfect for high-level creative or professional projects. Aspect ratio is customizable, but the number of outputs is fixed."
     },
     {
       "id": "ideogram-v3-balanced",
@@ -115,7 +117,8 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Ideogram V3 Balanced is an AI model that strikes the perfect balance between speed, quality, and cost. It generates images with stunning realism, creative design, and consistent visual style. Great for anyone looking for professional-grade results without compromising on efficiency. Aspect ratio is adjustable, but output count is fixed."
     },
     {
       "id": "imagen-4-ultra",
@@ -126,7 +129,8 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Imagen 4 Ultra is the top-tier version of Google Imagen 4, built for when image quality matters most. Ideal for projects where you want stunning detail and premium visuals, even if it takes more time and cost. Aspect ratio is adjustable, but the number of outputs is fixed."
     },
     {
       "id": "stable-diffusion-3.5-large",
@@ -137,7 +141,8 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Stable Diffusion 3.5 Large is an advanced text-to-image model that generates high-resolution images with fine detail. It supports a variety of artistic styles and produces diverse outputs from a single prompt. You can adjust the aspect ratio, but the number of outputs is fixed. Great for high-quality visual exploration."
     },
     {
       "id": "flux-kontext-max",
@@ -148,7 +153,8 @@
       "enabled": true,
       "accepts_image_input": true,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description":"Flux Kontext Max is a premium text-based image editing model built for maximum performance. It offers major improvements in typography generation and transforms images through natural language prompts. You can upload image inputs, adjust the aspect ratio, and choose the number of outputs — perfect for high-end design work and creative storytelling."
     },
     {
       "id": "recraft-v3-svg",
@@ -159,6 +165,7 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true
+      "configurable_num_outputs": false,
+      "description": "Recraft V3 SVG (code-named red_panda) is a text-to-image model with the ability to generate high quality SVG images including logotypes, and icons. The model supports a wide list of styles."
     }
   ]

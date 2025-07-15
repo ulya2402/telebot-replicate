@@ -6,10 +6,10 @@ import (
 	"telegram-ai-bot/internal/config"
 	"telegram-ai-bot/internal/database"
 	"telegram-ai-bot/internal/localization"
+	"telegram-ai-bot/internal/payments"
 	"telegram-ai-bot/internal/services"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	templates := config.LoadTemplates("templates/templates.json")
 	localizer := localization.New("locales")
 	dbClient := database.NewClient(cfg)
-	
+
 	replicateClient, err := services.NewReplicateClient(cfg.ReplicateAPIToken)
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -32,7 +32,11 @@ func main() {
 	api.Debug = false
 	log.Printf("INFO: Authorized on account %s", api.Self.UserName)
 
-	handler := bot.NewHandler(api, dbClient, localizer, models, templates, replicateClient, cfg)
+	// PERBAIKAN: Inisialisasi paymentHandler sebelum handler utama
+	paymentHandler := payments.NewPaymentHandler(api, dbClient, localizer, cfg.PaymentProviderToken, cfg.ManualPaymentInfo, "internal/payments/packages.json")
+
+	// PERBAIKAN: paymentHandler diberikan sebagai argumen saat membuat handler utama
+	handler := bot.NewHandler(api, dbClient, localizer, models, templates, replicateClient, cfg, paymentHandler)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
