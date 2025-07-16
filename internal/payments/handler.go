@@ -102,7 +102,7 @@ func (ph *PaymentHandler) HandleStarsInvoice(chatID int64, packageID string) {
 // --- SELESAI PERBAIKAN ---
 
 func (ph *PaymentHandler) ShowTopUpOptions(chatID int64) {
-	lang := "id"
+	lang := "en"
 	text := ph.Localizer.Get(lang, "topup_select_method")
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
