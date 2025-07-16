@@ -250,6 +250,7 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 		sentCount := 0
 		for _, user := range allUsers {
 			msg := tgbotapi.NewMessage(user.TelegramID, broadcastText)
+			msg.ParseMode = "HTML" 
 			_, err := h.Bot.Send(msg)
 			if err == nil {
 				sentCount++
