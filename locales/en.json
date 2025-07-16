@@ -51,7 +51,9 @@
   "topup_select_method": "<b>Add Credits</b>\n\nYou can top up your credits automatically using <b>Telegram Stars</b> ⭐️ or via <b>Manual Payment</b>.\n\nPlease choose your preferred method below:",
 "topup_select_package": "<b>⭐ Choose Your Package</b>\n\n<b>🚀 Starter</b>\n• Buy: 50 Stars\n• Get: 125 Credits\n<i>✨ Perfect for when you're just getting started.</i>\n\n<b>🔥 Value</b> - <i>🌟 Most Popular</i>\n• Buy: 100 Stars\n• Get: 250 Credits\n<i>💸 Great value for everyday use.</i>\n\n<b>🎨 Creator</b>\n• Buy: 350 Stars\n• Get: 800 Credits\n<i>📦 Go all out with the Creator package.</i>\n\n<b>👑 Pro</b> - <i>💎 Best Value</i>\n• Buy: 500 Stars\n• Get: 1,200 Credits\n<i>🚀 The perfect boost for your creative journey.</i>",
   "topup_success": "✅ Top-up successful! *{credits}* credits have been added to your account.\nYour new balance: *{balance}* 💵",
-  "topup_error_admin": "❌ An error occurred while adding credit after payment. Please contact @botaralabs."
+  "topup_error_admin": "❌ An error occurred while adding credit after payment. Please contact @botaralabs.",
+  "group_command_text": "<b>Want to use me in a group?</b>\n\nClick the button below and select which group or channel you'd like to add me to. I can help generate images for everyone!",
+  "button_add_to_group": "➕ Add Me to a Group"
 
 
   }

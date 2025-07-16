@@ -192,3 +192,16 @@ func (h *Handler) createBackToMenuKeyboard(lang string) tgbotapi.InlineKeyboardM
 		),
 	)
 }
+
+func (h *Handler) createAddToGroupKeyboard(lang string, botUsername string) tgbotapi.InlineKeyboardMarkup {
+	buttonText := h.Localizer.Get(lang, "button_add_to_group")
+	// URL khusus dari Telegram untuk memicu aksi tambah ke grup
+	url := fmt.Sprintf("https://t.me/%s?startgroup=true", botUsername)
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL(buttonText, url),
+		),
+	)
+	return keyboard
+}

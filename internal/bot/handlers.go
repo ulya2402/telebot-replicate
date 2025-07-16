@@ -36,21 +36,56 @@ type Handler struct {
 	lastGeneratedURLs     map[int64][]string // <-- BARU: Untuk menyimpan URL RAW
 	lastGeneratedURLsMutex sync.Mutex 
 	PaymentHandler *payments.PaymentHandler
+	GroupHandler          *GroupHandler
 }
 
 func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
-	return &Handler{
-		Bot:             api,
-		DB:              db,
-		Localizer:       localizer,
-		Models:          models,
-		PromptTemplates: templates,
-		Replicate:       replicate,
-		userStates:      make(map[int64]string),
-		Config:          cfg, // <-- Sekarang 'cfg' dikenal dan bisa digunakan
-		lastGeneratedURLs:     make(map[int64][]string),
-		PaymentHandler: paymentHandler,
+	h := &Handler{
+		Bot:               api,
+		DB:                db,
+		Localizer:         localizer,
+		Models:            models,
+		PromptTemplates:   templates,
+		Replicate:         replicate,
+		userStates:        make(map[int64]string),
+		Config:            cfg,
+		lastGeneratedURLs: make(map[int64][]string),
+		PaymentHandler:    paymentHandler,
 	}
+	h.GroupHandler = NewGroupHandler(h)
+	return h
+}
+
+func (h *Handler) newReplyMessage(originalMessage *tgbotapi.Message, text string) tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(originalMessage.Chat.ID, text)
+	if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+		msg.ReplyToMessageID = originalMessage.MessageID
+	}
+	return msg
+}
+
+func (h *Handler) newReplyPhoto(originalMessage *tgbotapi.Message, photo tgbotapi.RequestFileData) tgbotapi.PhotoConfig {
+	msg := tgbotapi.NewPhoto(originalMessage.Chat.ID, photo)
+	if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+		msg.ReplyToMessageID = originalMessage.MessageID
+	}
+	return msg
+}
+
+func (h *Handler) newReplyDocument(originalMessage *tgbotapi.Message, file tgbotapi.RequestFileData) tgbotapi.DocumentConfig {
+	doc := tgbotapi.NewDocument(originalMessage.Chat.ID, file)
+	if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+		doc.ReplyToMessageID = originalMessage.MessageID
+	}
+	return doc
+}
+
+func (h *Handler) newReplyMediaGroup(originalMessage *tgbotapi.Message, media []interface{}) tgbotapi.MediaGroupConfig {
+	msg := tgbotapi.NewMediaGroup(originalMessage.Chat.ID, media)
+	if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+		msg.ReplyToMessageID = originalMessage.MessageID
+	}
+	return msg
 }
 
 func (h *Handler) isAdmin(userID int64) bool {
@@ -69,6 +104,13 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 	case update.Message != nil && update.Message.SuccessfulPayment != nil:
 		h.PaymentHandler.HandleSuccessfulPayment(update.Message)
 	case update.Message != nil:
+		// Jika pesan datang dari grup, serahkan ke GroupHandler
+		if update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup() {
+			h.GroupHandler.HandleGroupMessage(update.Message)
+			return // Hentikan proses lebih lanjut di sini
+		}
+
+		// Jika dari chat pribadi, lanjutkan seperti biasa
 		if update.Message.IsCommand() {
 			h.handleCommand(update.Message)
 		} else {
@@ -85,7 +127,7 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	// Cek apakah perintah ini khusus admin
 	isAdminCommand := command == "stats" || command == "addcredits" || command == "broadcast"
 	if isAdminCommand && !h.isAdmin(message.From.ID) {
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get("en", "permission_denied"))
+		msg := h.newReplyMessage(message, h.Localizer.Get("en", "permission_denied"))
 		h.Bot.Send(msg)
 		return
 	}
@@ -94,6 +136,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	switch command {
 	case "start":
 		h.handleStart(message)
+	case "group":
+		h.handleGroupCommand(message)
 	case "help":
 		h.handleHelp(message)
 	case "img", "gen":
@@ -117,7 +161,7 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	case "topup":
 		h.PaymentHandler.ShowTopUpOptions(message.Chat.ID)
 	default:
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Unknown command")
+		msg := h.newReplyMessage(message, "Unknown command")
 		h.Bot.Send(msg)
 	}
 }
@@ -140,7 +184,7 @@ func (h *Handler) handleStats(message *tgbotapi.Message) {
 	}
 	
 	text := h.Localizer.Getf(lang, "stats_message", args)
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "Markdown"
 	h.Bot.Send(msg)
 }
@@ -149,7 +193,7 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 	lang := "en"
 	parts := strings.Fields(message.CommandArguments())
 	if len(parts) != 2 {
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "addcredits_usage"))
+		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "addcredits_usage"))
 		h.Bot.Send(msg)
 		return
 	}
@@ -158,7 +202,7 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 	amount, err2 := strconv.Atoi(parts[1])
 	
 	if err1 != nil || err2 != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "addcredits_usage"))
+		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "addcredits_usage"))
 		h.Bot.Send(msg)
 		return
 	}
@@ -166,7 +210,7 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 	targetUser, err := h.DB.GetUserByTelegramID(targetID)
 	if err != nil || targetUser == nil {
 		args := map[string]string{"user_id": parts[0]}
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "addcredits_user_not_found", args))
+		msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "addcredits_user_not_found", args))
 		h.Bot.Send(msg)
 		return
 	}
@@ -178,7 +222,7 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 		"amount":  strconv.Itoa(amount),
 		"user_id": parts[0],
 	}
-	msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "addcredits_success", args))
+	msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "addcredits_success", args))
 	h.Bot.Send(msg)
 }
 
@@ -186,7 +230,7 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	lang := "en"
 	broadcastText := message.CommandArguments()
 	if broadcastText == "" {
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "broadcast_usage"))
+		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "broadcast_usage"))
 		h.Bot.Send(msg)
 		return
 	}
@@ -198,7 +242,7 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	}
 
 	args := map[string]string{"user_count": strconv.Itoa(len(allUsers))}
-	startMsg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Getf(lang, "broadcast_started", args))
+	startMsg := h.newReplyMessage(message, h.Localizer.Getf(lang, "broadcast_started", args))
 	h.Bot.Send(startMsg)
 
 	// Jalankan broadcast di goroutine agar tidak memblokir bot
@@ -223,6 +267,25 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	}(message.Chat.ID)
 }
 
+func (h *Handler) handleGroupCommand(message *tgbotapi.Message) {
+	user, _ := h.getOrCreateUser(message.From)
+	lang := user.LanguageCode
+
+	// Ambil teks instruksi dari file bahasa
+	text := h.Localizer.Get(lang, "group_command_text")
+
+	// Buat pesan balasan
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "HTML"
+
+	// Buat dan lampirkan keyboard dengan tombol "Add to Group"
+	keyboard := h.createAddToGroupKeyboard(lang, h.Bot.Self.UserName)
+	msg.ReplyMarkup = &keyboard
+
+	// Kirim pesan
+	h.Bot.Send(msg)
+}
+
 func (h *Handler) handleSettings(message *tgbotapi.Message) {
 	user, err := h.getOrCreateUser(message.From)
 	if err != nil {
@@ -236,7 +299,7 @@ func (h *Handler) handleSettings(message *tgbotapi.Message) {
 	}
 	text := h.Localizer.Getf(lang, "settings_menu", args)
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "Markdown"
 	// PERBAIKAN: Tambahkan '&' untuk mendapatkan pointer
 	keyboard := h.createSettingsKeyboard(lang, user)
@@ -275,6 +338,9 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		From: callback.From,
 		Chat: &tgbotapi.Chat{ID: callback.Message.Chat.ID},
 	}
+if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
+        dummyMessage.MessageID = callback.Message.MessageID
+}
 
 	if strings.HasPrefix(action, "buy_stars") {
 		packageID := strings.Split(callback.Data, ":")[1]
@@ -387,8 +453,7 @@ func (h *Handler) handleCancel(message *tgbotapi.Message) {
 		
 		user, _ := h.getOrCreateUser(message.From)
 		lang := user.LanguageCode
-		
-		msg := tgbotapi.NewMessage(message.Chat.ID, h.Localizer.Get(lang, "flow_cancelled"))
+		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "flow_cancelled"))		
 		h.Bot.Send(msg)
 	}
 }
@@ -443,12 +508,15 @@ func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, temp
 		return
 	}
 	user, _ := h.getOrCreateUser(callback.From)
-	// Panggil trigger tanpa URL gambar
-	h.triggerImageGeneration(user, modelID, selectedTemplate.Prompt, callback.Message.Chat.ID)
+	messageForReply := callback.Message
 	
+	// Pemanggilan yang sudah diperbaiki: tanpa imageURL
+	h.triggerImageGeneration(user, messageForReply, modelID, selectedTemplate.Prompt)
+
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
 	h.Bot.Send(deleteMsg)
 }
+
 
 func (h *Handler) getFileURL(fileID string) (string, error) {
 	fileConfig := tgbotapi.FileConfig{FileID: fileID}
@@ -576,11 +644,11 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
-	h.triggerImageGeneration(user, modelID, prompt, message.Chat.ID, imageURL)
+	h.triggerImageGeneration(user, message, modelID, prompt, imageURL)
 }
 
 
-func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt string, chatID int64, imageURL ...string) {
+func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *tgbotapi.Message, modelID, prompt string, imageURL ...string) {
 	h.userStatesMutex.Lock()
 	delete(h.userStates, user.TelegramID)
 	h.userStatesMutex.Unlock()
@@ -618,15 +686,15 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 			"required": strconv.Itoa(totalCost),
 			"balance":  strconv.Itoa(totalAvailableCredits),
 		}
-		msg := tgbotapi.NewMessage(chatID, h.Localizer.Getf(lang, "insufficient_credits", insufficientArgs))
+		msg := h.newReplyMessage(originalMessage, h.Localizer.Getf(lang, "insufficient_credits", insufficientArgs))
 		h.Bot.Send(msg)
 		return
 	}
 	// --- SELESAI PERUBAHAN LOGIKA KREDIT ---
 
-	waitMsg := tgbotapi.NewMessage(chatID, h.Localizer.Get(lang, "generating"))
+	waitMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generating"))
 	sentMsg, _ := h.Bot.Send(waitMsg)
-	defer h.Bot.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID))
+	defer h.Bot.Send(tgbotapi.NewDeleteMessage(originalMessage.Chat.ID, sentMsg.MessageID))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -638,7 +706,10 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, aspectRatio, numOutputs)
 
 	if err != nil || len(imageUrls) == 0 {
-		h.Bot.Send(tgbotapi.NewMessage(chatID, h.Localizer.Get(lang, "generation_failed")))
+        // --- BARIS YANG DIPERBARUI ---
+		failMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed"))
+        // --- SELESAI ---
+		h.Bot.Send(failMsg)
 		return
 	}
 
@@ -696,7 +767,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 	
 
 	if len(imageUrls) == 1 {
-		msg := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(imageUrls[0]))
+		msg := h.newReplyPhoto(originalMessage, tgbotapi.FileURL(imageUrls[0]))
 		msg.Caption = caption
 		msg.ParseMode = "HTML"
 		h.Bot.Send(msg)
@@ -710,7 +781,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 			}
 			media = append(media, photo)
 		}
-		msg := tgbotapi.NewMediaGroup(chatID, media)
+		msg := h.newReplyMediaGroup(originalMessage, media)
 		h.Bot.Send(msg)
 	}
 	rawPromptText := h.Localizer.Get(lang, "raw_file_prompt")
@@ -722,7 +793,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, modelID, prompt st
 		),
 	)
 	
-	rawMsg := tgbotapi.NewMessage(chatID, rawPromptText)
+	rawMsg := tgbotapi.NewMessage(originalMessage.Chat.ID, rawPromptText)
 	rawMsg.ReplyMarkup = &keyboard
 	h.Bot.Send(rawMsg)
 }
@@ -791,7 +862,7 @@ func (h *Handler) handleStart(message *tgbotapi.Message) {
 		"num_images":   strconv.Itoa(user.NumOutputs),
 	}
 	caption := h.Localizer.Getf(lang, "welcome", args)
-	photoMsg := tgbotapi.NewPhoto(message.Chat.ID, tgbotapi.FileURL(h.Config.WelcomeImageURL))
+	photoMsg := h.newReplyPhoto(message, tgbotapi.FileURL(h.Config.WelcomeImageURL))
 	photoMsg.Caption = caption
 	photoMsg.ParseMode = "HTML"
 	keyboard := h.createMainMenuKeyboard(lang)
@@ -803,7 +874,7 @@ func (h *Handler) handleHelp(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
 	lang := user.LanguageCode
 	text := h.Localizer.Get(lang, "help")
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	keyboard := h.createBackToMenuKeyboard(lang)
 	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = "html"
@@ -840,7 +911,7 @@ func (h *Handler) handleProfile(message *tgbotapi.Message) {
 	}
 
 	text := h.Localizer.Getf(lang, "profile", args)
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "Markdown"
 	h.Bot.Send(msg)
 }
@@ -866,7 +937,7 @@ func (h *Handler) handleReferral(message *tgbotapi.Message) {
 			tgbotapi.NewInlineKeyboardButtonURL("🚀 Share with Friends", shareURL),
 		),
 	)
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
@@ -880,7 +951,7 @@ func (h *Handler) handleLang(message *tgbotapi.Message) {
 	lang := user.LanguageCode
 	text := h.Localizer.Get(lang, "lang_select")
 	keyboard := h.createLanguageSelectionKeyboard()
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ReplyMarkup = keyboard
 	h.Bot.Send(msg)
 }
@@ -897,8 +968,12 @@ func (h *Handler) handleLangSelection(callback *tgbotapi.CallbackQuery, langCode
 		return
 	}
 	confirmationText := h.Localizer.Get(langCode, "lang_updated")
+
+	// PERBAIKAN: Menggunakan `callback.Message.Chat.ID` yang sudah pasti ada
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, confirmationText)
 	h.Bot.Send(msg)
+
+	// Hapus keyboard dari pesan lama
 	editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, callback.Message.Text)
 	h.Bot.Send(editMsg)
 }
@@ -967,7 +1042,7 @@ func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
 	text := h.Localizer.Getf(lang, "choose_model", args)
 
 	keyboard := h.createModelSelectionKeyboard(h.Models, lang, 0)
-	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
@@ -1023,7 +1098,7 @@ func (h *Handler) handleRawDownload(callback *tgbotapi.CallbackQuery) {
 			Bytes: bytes,
 		}
 
-		doc := tgbotapi.NewDocument(callback.Message.Chat.ID, fileBytes)
+		doc := h.newReplyDocument(callback.Message, fileBytes)
 		h.Bot.Send(doc)
 		// --- SELESAI TRIK UTAMA ---
 	}
