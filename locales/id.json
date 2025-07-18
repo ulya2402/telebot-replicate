@@ -54,5 +54,21 @@
   "topup_error_admin": "❌ Terjadi kesalahan saat menambahkan kredit setelah pembayaran. Mohon hubungi @botaralabs.",
   "group_command_text": "<b>Ingin memakaku di grup?</b>\n\nKlik tombol di bawah dan pilih grup atau channel mana kamu ingin menambahkanku. Aku bisa membantu membuat gambar untuk semua orang!",
   "button_add_to_group": "➕ Tambahkan ke Grup",
-  "button_topup": "💰 Isi Ulang Kredit"
+  "button_topup": "💰 Isi Ulang Kredit",
+  "button_faq": "❓ FAQ",
+  "faq_title": "*Tanya Jawab (FAQ)*\n\nIni pertanyaan yang sering banget ditanyain. Coba cek, mungkin pertanyaanmu ada di sini.\n\nKalau pertanyaanmu nggak ada di sini, langsung aja DM ke @botaralabs ya",
+  "faq_q1_button": "Bot apa sih ini?",
+  "faq_q1_answer": "Bot ini adalah bot AI yang bisa bikinin kamu gambar dari teks.",
+  "faq_q2_button": "Gimana cara dapet kredit?",
+  "faq_q2_answer": "Gampang! Setiap hari kamu otomatis dapet *5 kredit gratis*. Kalau kurang, kamu bisa:\n\n1.  Pakai perintah `/topup` buat beli kredit.\n2.  Ajak teman pakai link dari perintah `/referral` buat dapet bonus.",
+  "faq_q3_button": "Berapa biaya bikin gambar?",
+  "faq_q3_answer": "Tiap model AI harganya beda-beda. Kamu bisa lihat biayanya (dalam 💵) di samping nama model pas kamu milih di menu `/img`.",
+  "faq_q4_button": "Kalau gagal, kreditku hangus?",
+  "faq_q4_answer": "Nggak dong, tenang aja! Kalau proses pembuatan gambar gagal karena error, kredit kamu *enggak akan kepotong* sama sekali. Aman!",
+  "faq_q5_button": "Bisa pakai gambar sendiri?",
+  "faq_q5_answer": "Bisa banget! Beberapa model mendukung fitur itu. Pas kamu pilih model, nanti ada keterangannya kok. Caranya, tinggal kirim gambar kamu terus kasih perintah di bagian *caption*.",
+  "faq_q6_button": "Kok gambarnya beda sama mauku?",
+  "faq_q6_answer": "Kualitas gambar itu tergantung banget sama perintah (prompt) yang kamu kasih. Coba deh kasih perintah yang lebih jelas, detail dan pakai bahasa inggris.\n\nContoh:\n❌ `kucing lucu`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
+  "faq_q7_button": "Sistem kreditnya gimana?",
+  "faq_q7_answer": "Ada 2 jenis kredit: *Gratis* & *Berbayar*.\n\n*Kredit Gratis*: Kamu dapat 5 kredit ini *setiap hari*. Kredit ini akan di-reset (diisi ulang) setiap jam 7 pagi WIB. Sisa kredit gratis dari hari kemarin akan hangus.\n\n*Kredit Berbayar*: Ini kredit yang kamu beli lewat `/topup`. Kredit ini *nggak ada masa berlakunya* (nggak akan hangus) dan baru akan terpakai kalau kredit gratismu sudah habis."
 }

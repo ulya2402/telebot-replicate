@@ -54,5 +54,21 @@
   "topup_error_admin": "❌ An error occurred while adding credit after payment. Please contact @botaralabs.",
   "group_command_text": "<b>Want to use me in a group?</b>\n\nClick the button below and select which group or channel you'd like to add me to. I can help generate images for everyone!",
   "button_add_to_group": "➕ Add Me to a Group",
-  "button_topup": "💰 Top Up Credits"
+  "button_topup": "💰 Top Up Credits",
+  "button_faq": "❓ FAQ",
+  "faq_title": "*Frequently Asked Questions*\n\nHere are some common questions. Please select one to see the answer\n\nIf your question isn't listed here, feel free to ask at @botaralabs.",
+  "faq_q1_button": "What is this bot?",
+  "faq_q1_answer": "This is an AI-powered bot that can generate images from your text descriptions.",
+  "faq_q2_button": "How do I get credits?",
+  "faq_q2_answer": "You receive 5 free credits daily. You can also get more by using the `/topup` command or by inviting friends via your `/referral` link.",
+  "faq_q3_button": "How much does generation cost?",
+  "faq_q3_answer": "Each AI model has a different credit cost. You can see the cost next to the model's name when you select one via the `/img` command.",
+  "faq_q4_button": "Do I lose credits if generation fails?",
+  "faq_q4_answer": "No, don't worry! If an image generation fails due to an error, your credits will *not* be deducted.",
+  "faq_q5_button": "Can I use my own image as a reference?",
+  "faq_q5_answer": "Absolutely! Some models support this feature. It will be indicated when you select a model. Just send your image with your prompt in the *caption*.",
+  "faq_q6_button": "Why does my image look different from my prompt?",
+  "faq_q6_answer": "The quality of the output heavily depends on the detail in your prompt. Try to be more specific and detailed, and use English for best results.\n\nExample:\n❌ `cute cat`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
+  "faq_q7_button": "How does the credit system work?",
+  "faq_q7_answer": "There are 2 types of credits: *Free* & *Paid*.\n\n*Free Credits*: You get 5 of these *every day*. They reset at midnight (00:00 UTC). Any unused free credits from the previous day will expire.\n\n*Paid Credits*: These are the credits you purchase via `/topup`. They *do not expire* and are only used after your daily free credits have run out."
   }

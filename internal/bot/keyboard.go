@@ -207,6 +207,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_faq"), "main_menu_faq"),
+        ),
 	)
 }
 
@@ -241,4 +244,39 @@ func (h *Handler) createAddToGroupKeyboard(lang string, botUsername string) tgbo
 		),
 	)
 	return keyboard
+}
+
+func (h *Handler) createFaqKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+    keyboard := tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q1_button"), "faq_show:q1"),
+        ),
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q2_button"), "faq_show:q2"),
+        ),
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q3_button"), "faq_show:q3"),
+        ),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q4_button"), "faq_show:q4"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q5_button"), "faq_show:q5"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q6_button"), "faq_show:q6"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q7_button"), "faq_show:q7"),
+        ),
+    )
+    return keyboard
+}
+
+func (h *Handler) createFaqAnswerKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+    return tgbotapi.NewInlineKeyboardMarkup(
+        tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "faq_back"),
+        ),
+    )
 }

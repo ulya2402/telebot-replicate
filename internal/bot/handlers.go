@@ -142,6 +142,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleGroupCommand(message)
 	case "help":
 		h.handleHelp(message)
+	case "faq":
+        h.handleFaq(message)
 	case "img", "gen":
 		h.handleImageCommand(message)
 	case "profile", "status":
@@ -419,6 +421,9 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	
 	case "main_menu_settings":
 		h.handleSettings(dummyMessage)
+	
+	case "main_menu_faq":
+		h.handleFaq(dummyMessage)
 
 	case "main_menu_language":
 		h.handleLang(dummyMessage)
@@ -446,6 +451,10 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "topup_manual": // <-- BARU
 		h.PaymentHandler.ShowManualPaymentInfo(callback.Message.Chat.ID)
 
+	case "faq_show":
+        h.handleFaqShow(callback, data)
+    case "faq_back":
+        h.handleFaqBack(callback)
 
 	}
 }
@@ -1177,4 +1186,55 @@ func (h *Handler) handleRawDownload(callback *tgbotapi.CallbackQuery) {
 	sentText := h.Localizer.Get(lang, "raw_files_sent")
 	editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, sentText)
 	h.Bot.Send(editMsg)
+}
+
+func (h *Handler) handleFaq(message *tgbotapi.Message) {
+    user, _ := h.getOrCreateUser(message.From)
+    lang := user.LanguageCode
+    text := h.Localizer.Get(lang, "faq_title")
+
+    msg := h.newReplyMessage(message, text)
+    msg.ParseMode = "Markdown"
+    keyboard := h.createFaqKeyboard(lang)
+    msg.ReplyMarkup = &keyboard
+    h.Bot.Send(msg)
+}
+
+func (h *Handler) handleFaqShow(callback *tgbotapi.CallbackQuery, questionID string) {
+    user, _ := h.getOrCreateUser(callback.From)
+    lang := user.LanguageCode
+
+    // 1. Ambil teks pertanyaan dari tombol yang diklik
+    questionKey := fmt.Sprintf("faq_%s_button", questionID)
+    questionText := h.Localizer.Get(lang, questionKey)
+
+    // 2. Ambil teks jawabannya
+    answerKey := fmt.Sprintf("faq_%s_answer", questionID)
+    answerText := h.Localizer.Get(lang, answerKey)
+
+    // 3. Gabungkan pertanyaan dan jawaban jadi satu pesan
+    // Format:
+    // *Pertanyaan*
+    //
+    // Jawaban
+    combinedText := fmt.Sprintf("*%s*\n\n%s", questionText, answerText)
+
+    // 4. Kirim pesan yang sudah digabung
+    msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, combinedText)
+    msg.ParseMode = "Markdown"
+    keyboard := h.createFaqAnswerKeyboard(lang)
+    msg.ReplyMarkup = &keyboard
+    h.Bot.Send(msg)
+}
+
+func (h *Handler) handleFaqBack(callback *tgbotapi.CallbackQuery) {
+    user, _ := h.getOrCreateUser(callback.From)
+    lang := user.LanguageCode
+    text := h.Localizer.Get(lang, "faq_title")
+
+    msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+    msg.ParseMode = "Markdown"
+    keyboard := h.createFaqKeyboard(lang)
+    msg.ReplyMarkup = &keyboard
+    h.Bot.Send(msg)
 }
