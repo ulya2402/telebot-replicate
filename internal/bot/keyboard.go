@@ -13,7 +13,24 @@ import (
 
 const itemsPerPage = 6
 
-func (h *Handler) createModelSelectionKeyboard(models []config.Model, lang string, page int) tgbotapi.InlineKeyboardMarkup {
+func (h *Handler) createProviderSelectionKeyboard(providers []config.Provider, lang string) tgbotapi.InlineKeyboardMarkup {
+	var keyboard [][]tgbotapi.InlineKeyboardButton
+
+	var row []tgbotapi.InlineKeyboardButton
+	for i, provider := range providers {
+		callbackData := fmt.Sprintf("provider_select:%s", provider.ID)
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(provider.Name, callbackData))
+
+		if (i+1)%2 == 0 || i == len(providers)-1 {
+			keyboard = append(keyboard, row)
+			row = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
+}
+
+func (h *Handler) createModelSelectionKeyboard(models []config.Model, lang string, providerID string, page int) tgbotapi.InlineKeyboardMarkup {
 	var keyboard [][]tgbotapi.InlineKeyboardButton
 
 	start := page * itemsPerPage
@@ -41,18 +58,24 @@ func (h *Handler) createModelSelectionKeyboard(models []config.Model, lang strin
 	}
 
 	var navRow []tgbotapi.InlineKeyboardButton
+	// Callback data sekarang menyertakan providerID
 	if page > 0 {
 		prevText := h.Localizer.Get(lang, "prev_button")
-		navRow = append(navRow, tgbotapi.NewInlineKeyboardButtonData(prevText, "model_page:"+strconv.Itoa(page-1)))
+		callbackData := fmt.Sprintf("model_page:%s;%d", providerID, page-1)
+		navRow = append(navRow, tgbotapi.NewInlineKeyboardButtonData(prevText, callbackData))
 	}
 	if end < len(models) {
 		nextText := h.Localizer.Get(lang, "next_button")
-		navRow = append(navRow, tgbotapi.NewInlineKeyboardButtonData(nextText, "model_page:"+strconv.Itoa(page+1)))
+		callbackData := fmt.Sprintf("model_page:%s;%d", providerID, page+1)
+		navRow = append(navRow, tgbotapi.NewInlineKeyboardButtonData(nextText, callbackData))
 	}
 
 	if len(navRow) > 0 {
 		keyboard = append(keyboard, navRow)
 	}
+
+	backButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "back_to_providers")
+	keyboard = append(keyboard, tgbotapi.NewInlineKeyboardRow(backButton))
 
 	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
 }
@@ -180,6 +203,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_help"), "main_menu_help"),
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_referral"), "main_menu_referral"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
 		),
 	)
 }

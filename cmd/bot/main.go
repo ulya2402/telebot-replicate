@@ -14,6 +14,7 @@ import (
 
 func main() {
 	cfg := config.Load()
+	providers := config.LoadProviders("providers.json") // <-- BARU
 	models := config.LoadModels("models.json")
 	templates := config.LoadTemplates("templates/templates.json")
 	localizer := localization.New("locales")
@@ -36,7 +37,7 @@ func main() {
 	paymentHandler := payments.NewPaymentHandler(api, dbClient, localizer, cfg.PaymentProviderToken, cfg.ManualPaymentInfo, "internal/payments/packages.json")
 
 	// PERBAIKAN: paymentHandler diberikan sebagai argumen saat membuat handler utama
-	handler := bot.NewHandler(api, dbClient, localizer, models, templates, replicateClient, cfg, paymentHandler)
+	handler := bot.NewHandler(api, dbClient, localizer, providers, models, templates, replicateClient, cfg, paymentHandler)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60

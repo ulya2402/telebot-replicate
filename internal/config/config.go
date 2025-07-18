@@ -42,6 +42,12 @@ type PromptTemplate struct {
 	Prompt string `json:"prompt"`
 }
 
+type Provider struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 
 func Load() *Config {
 	if err := godotenv.Load(); err != nil {
@@ -98,6 +104,22 @@ func LoadModels(file string) []Model {
 	log.Printf("INFO: Loaded %d enabled models", len(enabledModels))
 	return enabledModels
 }
+
+func LoadProviders(file string) []Provider {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatalf("FATAL: Could not read providers file %s: %v", file, err)
+	}
+
+	var providers []Provider
+	if err := json.Unmarshal(data, &providers); err != nil {
+		log.Fatalf("FATAL: Could not parse providers file %s: %v", file, err)
+	}
+
+	log.Printf("INFO: Loaded %d providers", len(providers))
+	return providers
+}
+
 
 func LoadTemplates(file string) []PromptTemplate {
     data, err := ioutil.ReadFile(file)

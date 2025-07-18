@@ -1,5 +1,5 @@
 {
-  "welcome": "<b>Selamat datang, {name}!</b> 🎨\n\nAku adalah asisten AI pribadimu untuk membuat gambar. Kamu bisa mengubah ide apa pun menjadi nyata, hanya dengan kata-kata.\n\n<blockquote>Kamu dapat <b>5 kredit gratis</b> setiap hari untuk mulai berkarya!</blockquote>\n\nApa yang ingin kamu lakukan pertama kali?",
+  "welcome": "<b>Selamat datang, {name}!</b> 🎨\n\nAku adalah asisten AI pribadimu untuk membuat gambar. Kamu bisa mengubah ide apa pun menjadi nyata, hanya dengan kata-kata.\n\n<blockquote>Kamu dapat <b>5 kredit gratis</b> setiap hari untuk mulai berkarya!</blockquote>\n\n<b>Mau kredit lagi? 🚀</b>\n\nIsi ulang aja pakai perintah <b>/topup</b> atau tekan tombol di bawah ini. Pembayaran bisa lewat <b>Stars ⭐</b> atau <b>transfer manual</b>! 💳",
   "button_generate": "🎨 Buat Gambar",
   "button_settings": "⚙️ Pengaturan",
   "button_language": "🌐 Bahasa",
@@ -10,7 +10,7 @@
   "referral_message": "Bagikan link ini ke teman-temanmu! Kamu bakal dapat 5 💵.",
   "referral_link_text": "<b>Link referral kamu:</b>",
   "insufficient_credits": "Kredit kamu nggak cukup buat model ini. Butuh: {required} 💵, kamu punya: {balance} 💵.",
-  "choose_model": "<b> 🎨 Pilih Model AI Kamu</b>\n\nPengaturan kamu saat ini:\n- Rasio: <code>{aspect_ratio}</code>\n- Gambar: <code>{num_images}</code>\n\nSilakan pilih model untuk mewujudkan idemu. Model dikelompokkan berdasarkan <i>tingkatan.</i>",
+  "choose_model": "<b> 🎨 Pilih Model AI Kamu</b>\n\nPengaturan kamu saat ini:\n- Rasio: <code>{aspect_ratio}</code>\n- Gambar: <code>{num_images}</code>\n\nSilakan pilih model untuk mewujudkan idemu. Model dikelompokkan berdasarkan <i>provider.</i>",
   "enter_prompt": "<b>{model_name}</b>\n\n<i>{model_description}</i>\n\nSekarang, masukkan prompt kamu.",
   "generating": "⏳ Sedang membuat gambarmu... Mungkin butuh waktu sebentar.",
   "generation_failed": "❌ Gagal membuat gambar. Coba lagi nanti ya.",
@@ -53,5 +53,6 @@
   "topup_success": "✅ Top-up berhasil! *{credits}* kredit telah ditambahkan ke akunmu.\nSaldo barumu: *{balance}* 💵",
   "topup_error_admin": "❌ Terjadi kesalahan saat menambahkan kredit setelah pembayaran. Mohon hubungi @botaralabs.",
   "group_command_text": "<b>Ingin memakaku di grup?</b>\n\nKlik tombol di bawah dan pilih grup atau channel mana kamu ingin menambahkanku. Aku bisa membantu membuat gambar untuk semua orang!",
-  "button_add_to_group": "➕ Tambahkan ke Grup"
+  "button_add_to_group": "➕ Tambahkan ke Grup",
+  "button_topup": "💰 Isi Ulang Kredit"
 }

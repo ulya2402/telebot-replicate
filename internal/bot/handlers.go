@@ -27,6 +27,7 @@ type Handler struct {
 	Bot             *tgbotapi.BotAPI
 	DB              *database.Client
 	Localizer       *localization.Localizer
+	Providers       []config.Provider
 	Models          []config.Model
 	PromptTemplates []config.PromptTemplate
 	Replicate       *services.ReplicateClient
@@ -39,11 +40,12 @@ type Handler struct {
 	GroupHandler          *GroupHandler
 }
 
-func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
+func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, providers []config.Provider, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
 	h := &Handler{
 		Bot:               api,
 		DB:                db,
 		Localizer:         localizer,
+		Providers:         providers,
 		Models:            models,
 		PromptTemplates:   templates,
 		Replicate:         replicate,
@@ -351,9 +353,16 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 
 
 	switch action {
+	case "back_to_providers": // <-- AKSI BARU
+		h.showProviderSelection(callback)
+	case "provider_select": // <-- AKSI BARU
+		h.handleProviderSelection(callback, data)
 	case "model_page":
-		page, _ := strconv.Atoi(data)
-		h.navigateModels(callback, page)
+		// Perlu sedikit penyesuaian untuk pagination per provider
+		parts := strings.Split(data, ";") // Format baru: "provider_id;page"
+		providerID := parts[0]
+		page, _ := strconv.Atoi(parts[1])
+		h.navigateModels(callback, providerID, page)
 	case "model_select":
 		h.handleModelSelection(callback, data)
 	case "lang_select":
@@ -421,6 +430,9 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 
 	case "main_menu_referral":
 		h.handleReferral(dummyMessage)
+	
+		case "main_menu_topup": // <-- CASE BARU
+		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID)
 
 	case "download_raw": // <-- BARU
 		h.handleRawDownload(callback) // <-- BARU
@@ -436,6 +448,59 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 
 
 	}
+}
+
+func (h *Handler) showProviderSelection(callback *tgbotapi.CallbackQuery) {
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	args := map[string]string{
+		"aspect_ratio": user.AspectRatio,
+		"num_images":   strconv.Itoa(user.NumOutputs),
+	}
+	text := h.Localizer.Getf(lang, "choose_model", args)
+
+	keyboard := h.createProviderSelectionKeyboard(h.Providers, lang)
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) handleProviderSelection(callback *tgbotapi.CallbackQuery, providerID string) {
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	var selectedProvider *config.Provider
+	for _, p := range h.Providers {
+		if p.ID == providerID {
+			selectedProvider = &p
+			break
+		}
+	}
+	if selectedProvider == nil {
+		return
+	}
+
+	// Filter model berdasarkan provider yang dipilih
+	var providerModels []config.Model
+	for _, m := range h.Models {
+		if strings.HasPrefix(m.ReplicateID, providerID+"/") {
+			providerModels = append(providerModels, m)
+		}
+	}
+
+	// Buat teks dengan deskripsi provider
+	text := fmt.Sprintf("<b>%s</b>\n\n%s\n\nSilakan pilih model:", selectedProvider.Name, selectedProvider.Description)
+
+	// Buat keyboard model untuk provider ini
+	keyboard := h.createModelSelectionKeyboard(providerModels, lang, providerID, 0)
+
+	// Edit pesan sebelumnya untuk menampilkan model
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
 }
 
 func (h *Handler) getUserLang(userID int64) string {
@@ -566,15 +631,11 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 	h.userStatesMutex.Unlock()
 
 	var text string
-	args := map[string]string{
-		"model_name":        selectedModel.Name,
-		"model_description": selectedModel.Description,
-	}
 
 	if selectedModel.AcceptsImageInput {
-		text = h.Localizer.Getf(lang, "enter_prompt_with_image_option", args)
+		text = fmt.Sprintf("<b>%s</b>\n\nModel ini mendukung referensi gambar. Silakan kirim gambar dengan prompt di dalam caption, atau cukup kirim prompt teks saja.", selectedModel.Name)
 	} else {
-		text = h.Localizer.Getf(lang, "enter_prompt", args)
+		text = fmt.Sprintf("<b>%s</b>\n\nSekarang, masukkan prompt kamu.", selectedModel.Name)
 	}
 
 	// Tambahkan peringatan jika pengguna akan membuat lebih dari 1 gambar
@@ -800,9 +861,17 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 }
 
 
-func (h *Handler) navigateModels(callback *tgbotapi.CallbackQuery, page int) {
+func (h *Handler) navigateModels(callback *tgbotapi.CallbackQuery, providerID string, page int) {
 	user, _ := h.getOrCreateUser(callback.From)
-	keyboard := h.createModelSelectionKeyboard(h.Models, user.LanguageCode, page)
+
+	var providerModels []config.Model
+	for _, m := range h.Models {
+		if strings.HasPrefix(m.ReplicateID, providerID+"/") {
+			providerModels = append(providerModels, m)
+		}
+	}
+
+	keyboard := h.createModelSelectionKeyboard(providerModels, user.LanguageCode, providerID, page)
 	msg := tgbotapi.NewEditMessageReplyMarkup(callback.Message.Chat.ID, callback.Message.MessageID, keyboard)
 	h.Bot.Send(msg)
 }
@@ -1039,10 +1108,9 @@ func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
 		"aspect_ratio": user.AspectRatio,
 		"num_images":   strconv.Itoa(user.NumOutputs),
 	}
+	text := h.Localizer.Getf(lang, "choose_model", args) // Gunakan string choose_model yang lebih generik jika ada
 
-	text := h.Localizer.Getf(lang, "choose_model", args)
-
-	keyboard := h.createModelSelectionKeyboard(h.Models, lang, 0)
+	keyboard := h.createProviderSelectionKeyboard(h.Providers, lang) // Panggil keyboard provider
 	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard

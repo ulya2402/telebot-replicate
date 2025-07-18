@@ -9,7 +9,6 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": true,
-      "description": "Flux Schnell is an AI model that generates images really fast! Perfect if you need quick results without waiting around. Even though it’s super speedy, the image quality still looks great and detailed. It’s also flexible — you can set the aspect ratio and how many images you want.",
       "show_templates": false
     },
     {
@@ -143,19 +142,6 @@
       "description":"Imagen 4 Ultra is the top-tier version of Google Imagen 4, built for when image quality matters most. Ideal for projects where you want stunning detail and premium visuals, even if it takes more time and cost. Aspect ratio is adjustable, but the number of outputs is fixed."
     },
     {
-      "id": "stable-diffusion-3.5-large",
-      "name": "Stable Diffusion 3.5 Large",
-      "replicate_id": "stability-ai/stable-diffusion-3.5-large",
-      "tier": "premium",
-      "cost": 25,
-      "enabled": true,
-      "accepts_image_input": false,
-      "configurable_aspect_ratio": true,
-      "configurable_num_outputs": false,
-      "show_templates": false,
-      "description":"Stable Diffusion 3.5 Large is an advanced text-to-image model that generates high-resolution images with fine detail. It supports a variety of artistic styles and produces diverse outputs from a single prompt. You can adjust the aspect ratio, but the number of outputs is fixed. Great for high-quality visual exploration."
-    },
-    {
       "id": "flux-kontext-max",
       "name": "Flux Kontext Max",
       "replicate_id": "black-forest-labs/flux-kontext-max",
@@ -180,5 +166,53 @@
       "configurable_num_outputs": false,
       "show_templates": false,
       "description": "Recraft V3 SVG (code-named red_panda) is a text-to-image model with the ability to generate high quality SVG images including logotypes, and icons. The model supports a wide list of styles."
+    },
+    {
+      "id": "seedream-3",
+      "name": "Seedream 3.0",
+      "replicate_id": "bytedance/seedream-3",
+      "tier": "basic",
+      "cost": 15,
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false
+    },
+    {
+      "id": "ideogram-v3-turbo",
+      "name": "ideogram v3 turbo",
+      "replicate_id": "ideogram-ai/ideogram-v3-turbo",
+      "tier": "basic",
+      "cost": 15,
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false
+    },
+    {
+      "id": "ideogram-v3-quality",
+      "name": "ideogram v3 Quality",
+      "replicate_id": "ideogram-ai/ideogram-v3-quality",
+      "tier": "basic",
+      "cost": 35,
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false
+    },
+    {
+      "id": "flux-1.1-pro",
+      "name": "Flux 1.1 Pro",
+      "replicate_id": "black-forest-labs/flux-1.1-pro",
+      "tier": "basic",
+      "cost": 15,
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false
     }
   ]

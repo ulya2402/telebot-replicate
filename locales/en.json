@@ -1,5 +1,5 @@
 {
-  "welcome": "<b>Welcome, {name}!</b> 🎨\n\nI am your personal AI assistant for image generation. You can bring any idea to life, just by using words.\n\n<blockquote>You get <b>5 free credits</b> every day to start creating!</blockquote>\n\nWhat would you like to do first?",
+  "welcome": "<b>Welcome, {name}!</b> 🎨\n\nI am your personal AI assistant for image generation. You can bring any idea to life, just by using words.\n\n<blockquote>You get <b>5 free credits</b> every day to start creating!</blockquote>\n\nWhat would you like to do first?\n\n<b>Want more credits? 🚀</b>\n\nsubscribe using the command <b>/topup</b> or tap the button below. We accept payments via <b>Stars ⭐</b> or <b>manual transfer! 💳</b>",
   "button_generate": "🎨 Generate Image",
   "button_settings": "⚙️ Settings",
   "button_language": "🌐 Language",
@@ -10,7 +10,7 @@
   "referral_message": "Share this link with your friends! You'll get 5 💵.",
   "referral_link_text": "<b>Your referral link:</b>",
   "insufficient_credits": "You don't have enough credits for this model. Required: {required} 💵, You have: {balance} 💵.",
-  "choose_model": "<b> 🎨 Select Your AI Model</b>\n\nYour current settings are:\n- Ratio: <code>{aspect_ratio}</code>\n- Images: <code>{num_images}</code>\n\nPlease choose a model to bring your idea to life. Models are grouped by <i>tiers.</i>",
+  "choose_model": "<b> 🎨 Select Your AI Model</b>\n\nYour current settings are:\n- Ratio: <code>{aspect_ratio}</code>\n- Images: <code>{num_images}</code>\n\nPlease choose a model to bring your idea to life. Models are grouped by <i>provider.</i>",
   "enter_prompt": "<b>{model_name}</b>\n\n<i>{model_description}</i>\n\nPlease enter your prompt.",    
   "generating": "⏳ Generating your image... This might take a moment.",
   "generation_failed": "❌ Generation failed. Please try again later.",
@@ -53,7 +53,8 @@
   "topup_success": "✅ Top-up successful! *{credits}* credits have been added to your account.\nYour new balance: *{balance}* 💵",
   "topup_error_admin": "❌ An error occurred while adding credit after payment. Please contact @botaralabs.",
   "group_command_text": "<b>Want to use me in a group?</b>\n\nClick the button below and select which group or channel you'd like to add me to. I can help generate images for everyone!",
-  "button_add_to_group": "➕ Add Me to a Group"
+  "button_add_to_group": "➕ Add Me to a Group",
+  "button_topup": "💰 Top Up Credits"
 
 
   }

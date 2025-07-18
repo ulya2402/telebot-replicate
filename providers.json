@@ -1,0 +1,32 @@
+[
+    {
+      "id": "black-forest-labs",
+      "name": "Black Forest Labs",
+      "description": "Suite of models from Black Forest Labs, focusing on speed and efficiency. Ideal for rapid iteration and creative exploration."
+    },
+    {
+        "id": "google",
+        "name": "Google AI",
+        "description": "Advanced models from Google, known for their high quality and accurate prompt understanding."
+    },
+    {
+        "id": "runwayml",
+        "name": "Runway",
+        "description": "Next-gen models for creating highly accurate and consistent images."
+    },
+    {
+        "id": "bytedance",
+        "name": "Bytedance",
+        "description": "A text-to-image model with support for native high-resolution (2K) image generation."
+      },
+    {
+        "id": "ideogram-ai",
+        "name": "Ideogram AI",
+        "description": "AI models that strike a perfect balance between speed, quality, and cost, generating images with stunning realism."
+    },
+    {
+        "id": "recraft-ai",
+        "name": "Recraft AI",
+        "description": "Powerful text-to-image models that can generate images in many different styles."
+    }
+]
