@@ -210,6 +210,17 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 	)
 }
 
+func (h *Handler) createProfileKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_referral"), "main_menu_referral"),
+		),
+	)
+}
+
 // Fungsi baru untuk tombol Back ke menu utama
 func (h *Handler) createBackToMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(

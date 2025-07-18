@@ -945,7 +945,7 @@ func (h *Handler) handleHelp(message *tgbotapi.Message) {
 	lang := user.LanguageCode
 	text := h.Localizer.Get(lang, "help")
 	msg := h.newReplyMessage(message, text)
-	keyboard := h.createBackToMenuKeyboard(lang)
+	keyboard := h.createAddToGroupKeyboard(lang, h.Bot.Self.UserName) 
 	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = "html"
 	h.Bot.Send(msg)
@@ -983,6 +983,8 @@ func (h *Handler) handleProfile(message *tgbotapi.Message) {
 	text := h.Localizer.Getf(lang, "profile", args)
 	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "Markdown"
+	keyboard := h.createProfileKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
 }
 

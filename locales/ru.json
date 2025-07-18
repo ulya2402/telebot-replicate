@@ -21,7 +21,7 @@
     "time_hours": "часов",
     "time_minutes": "минут",
     "time_now": "Сейчас",
-    "flow_cancelled": "✅ Операция отменена. Можешь начать новую команду.",
+    "flow_cancelled": "✅ Операция отменена.",
     "cancel_button": "❌ Отмена",
     "permission_denied": "❌ У тебя нет прав для использования этой команды.",
     "addcredits_usage": "Использование: /addcredits [UserID] [Количество]",
