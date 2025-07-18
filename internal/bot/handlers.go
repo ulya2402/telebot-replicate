@@ -99,6 +99,35 @@ func (h *Handler) isAdmin(userID int64) bool {
 	return false
 }
 
+func (h *Handler) isUserSubscribed(userID int64) (bool, error) {
+	if h.Config.ForceSubscribeChannelID == 0 {
+		return true, nil
+	}
+
+	// ### PERBAIKAN DI SINI ###
+	// Ternyata, ChatConfigWithUser harus dibungkus di dalam GetChatMemberConfig.
+	getChatMemberConfig := tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+			ChatID: h.Config.ForceSubscribeChannelID,
+			UserID: userID,
+		},
+	}
+	// ### SELESAI PERBAIKAN ###
+
+	member, err := h.Bot.GetChatMember(getChatMemberConfig)
+	if err != nil {
+		log.Printf("ERROR: Failed to get chat member for user %d in channel %d: %v", userID, h.Config.ForceSubscribeChannelID, err)
+		return true, err
+	}
+
+	status := member.Status
+	if status == "member" || status == "administrator" || status == "creator" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 	switch {
 	case update.PreCheckoutQuery != nil:
@@ -132,6 +161,34 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		msg := h.newReplyMessage(message, h.Localizer.Get("en", "permission_denied"))
 		h.Bot.Send(msg)
 		return
+	}
+
+	if command == "referral" {
+		subscribed, _ := h.isUserSubscribed(message.From.ID)
+		if !subscribed {
+			user, _ := h.getOrCreateUser(message.From)
+			lang := user.LanguageCode
+
+			chat, err := h.Bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: h.Config.ForceSubscribeChannelID}})
+			if err != nil {
+				log.Printf("ERROR: Could not get chat info for channel %d: %v", h.Config.ForceSubscribeChannelID, err)
+				return
+			}
+			channelLink := fmt.Sprintf("https://t.me/%s", chat.UserName)
+
+			text := h.Localizer.Get(lang, "force_subscribe_message")
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonURL(h.Localizer.Get(lang, "force_subscribe_button"), channelLink),
+				),
+			)
+
+			msg := h.newReplyMessage(message, text)
+			msg.ReplyMarkup = &keyboard
+			msg.ParseMode = "HTML"
+			h.Bot.Send(msg)
+			return // Hentikan proses jika belum subscribe
+		}
 	}
 
 	// Jalankan perintah
@@ -351,6 +408,34 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		packageID := strings.Split(callback.Data, ":")[1]
 		h.PaymentHandler.HandleStarsInvoice(callback.Message.Chat.ID, packageID)
 		return
+	}
+
+	if action == "main_menu_referral" {
+		subscribed, _ := h.isUserSubscribed(callback.From.ID)
+		if !subscribed {
+			user, _ := h.getOrCreateUser(callback.From)
+			lang := user.LanguageCode
+
+			chat, err := h.Bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: h.Config.ForceSubscribeChannelID}})
+			if err != nil {
+				log.Printf("ERROR: Could not get chat info for channel %d: %v", h.Config.ForceSubscribeChannelID, err)
+				return
+			}
+			channelLink := fmt.Sprintf("https://t.me/%s", chat.UserName)
+
+			text := h.Localizer.Get(lang, "force_subscribe_message")
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonURL(h.Localizer.Get(lang, "force_subscribe_button"), channelLink),
+				),
+			)
+			// Kirim sebagai pesan baru karena kita tidak bisa mengedit pesan foto dengan teks saja
+			msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+			msg.ReplyMarkup = &keyboard
+			msg.ParseMode = "HTML"
+			h.Bot.Send(msg)
+			return // Hentikan proses jika belum subscribe
+		}
 	}
 
 
@@ -630,7 +715,13 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 		}
 		// --- SELESAI PERUBAHAN ---
 		text := h.Localizer.Getf(lang, "insufficient_credits", args)
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup_contextual"), "main_menu_topup"),
+			),
+		)
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+		msg.ReplyMarkup = &keyboard
 		h.Bot.Send(msg)
 		return
 	}

@@ -70,5 +70,8 @@
   "faq_q6_button": "Why does my image look different from my prompt?",
   "faq_q6_answer": "The quality of the output heavily depends on the detail in your prompt. Try to be more specific and detailed, and use English for best results.\n\nExample:\n❌ `cute cat`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
   "faq_q7_button": "How does the credit system work?",
-  "faq_q7_answer": "There are 2 types of credits: *Free* & *Paid*.\n\n*Free Credits*: You get 5 of these *every day*. They reset at midnight (00:00 UTC). Any unused free credits from the previous day will expire.\n\n*Paid Credits*: These are the credits you purchase via `/topup`. They *do not expire* and are only used after your daily free credits have run out."
+  "faq_q7_answer": "There are 2 types of credits: *Free* & *Paid*.\n\n*Free Credits*: You get 5 of these *every day*. They reset at midnight (00:00 UTC). Any unused free credits from the previous day will expire.\n\n*Paid Credits*: These are the credits you purchase via `/topup`. They *do not expire* and are only used after your daily free credits have run out.",
+  "force_subscribe_message": "<b>One More Step!</b> 🔑\n\nThis feature is exclusive to our channel members. Please join us to continue, then try again.",
+  "force_subscribe_button": "🔑 Join Channel",
+  "button_topup_contextual": "💰 Top Up Credits?"
   }

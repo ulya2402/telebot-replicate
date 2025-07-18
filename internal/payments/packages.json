@@ -3,28 +3,28 @@
       "id": "stars_50",
       "stars_amount": 50,
       "credits_amount": 125,
-      "title": "Starter",
+      "title": "🚀 Starter",
       "description": "Buy with 50 Stars and get 125 Credits. Perfect for when you're just getting started."
     },
     {
       "id": "stars_100",
       "stars_amount": 100,
       "credits_amount": 250,
-      "title": "Value",
+      "title": "🔥 Value",
       "description": "Our most popular choice! Buy with 100 star and receive a 250 Credits."
     },
     {
       "id": "stars_350",
       "stars_amount": 350,
       "credits_amount": 800,
-      "title": "Creator",
+      "title": "🎨 Creator",
       "description": "Go all out with the Creator package. You get 800 Credits."
     },
     {
       "id": "stars_500",
       "stars_amount": 500,
       "credits_amount": 1200,
-      "title": "Pro",
+      "title": "👑 Pro",
       "description": "Level up with 1,200 Credits for just 500 Stars, the perfect boost for your creative journey."
     }
   ]

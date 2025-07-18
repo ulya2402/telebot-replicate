@@ -20,6 +20,7 @@ type Config struct {
 	WelcomeImageURL    string
 	PaymentProviderToken string `json:"payment_provider_token"` // <-- BARU
 	ManualPaymentInfo    string `json:"manual_payment_info"`
+	ForceSubscribeChannelID int64
 }
 
 type Model struct {
@@ -71,6 +72,16 @@ func Load() *Config {
 		log.Printf("INFO: Loaded %d admin(s)", len(adminIDs))
 	}
 
+	channelIDStr := getEnv("FORCE_SUBSCRIBE_CHANNEL_ID", "0")
+	channelID, err := strconv.ParseInt(channelIDStr, 10, 64)
+	if err != nil {
+		log.Fatalf("FATAL: Invalid FORCE_SUBSCRIBE_CHANNEL_ID: %s", channelIDStr)
+	}
+	if channelID != 0 {
+		log.Printf("INFO: Force subscribe is enabled for channel ID: %d", channelID)
+	}
+	// <-- SELESAI BLOK BARU
+
 	return &Config{
 		TelegramBotToken:   getEnv("TELEGRAM_BOT_TOKEN", ""),
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
@@ -80,6 +91,7 @@ func Load() *Config {
 		WelcomeImageURL:    getEnv("WELCOME_IMAGE_URL", ""),
 		PaymentProviderToken: getEnv("PAYMENT_PROVIDER_TOKEN", ""), // <-- BARU
 		ManualPaymentInfo:    getEnv("MANUAL_PAYMENT_INFO", "Untuk pembayaran manual, silakan transfer ke:\nBank ABC: `1234567890` a.n. John Doe\n\nKirim bukti transfer ke @Admin."), // <-- BARU
+		ForceSubscribeChannelID: channelID,
 	}
 }
 

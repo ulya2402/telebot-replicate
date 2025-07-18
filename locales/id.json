@@ -70,5 +70,8 @@
   "faq_q6_button": "Kok gambarnya beda sama mauku?",
   "faq_q6_answer": "Kualitas gambar itu tergantung banget sama perintah (prompt) yang kamu kasih. Coba deh kasih perintah yang lebih jelas, detail dan pakai bahasa inggris.\n\nContoh:\n❌ `kucing lucu`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
   "faq_q7_button": "Sistem kreditnya gimana?",
-  "faq_q7_answer": "Ada 2 jenis kredit: *Gratis* & *Berbayar*.\n\n*Kredit Gratis*: Kamu dapat 5 kredit ini *setiap hari*. Kredit ini akan di-reset (diisi ulang) setiap jam 7 pagi WIB. Sisa kredit gratis dari hari kemarin akan hangus.\n\n*Kredit Berbayar*: Ini kredit yang kamu beli lewat `/topup`. Kredit ini *nggak ada masa berlakunya* (nggak akan hangus) dan baru akan terpakai kalau kredit gratismu sudah habis."
+  "faq_q7_answer": "Ada 2 jenis kredit: *Gratis* & *Berbayar*.\n\n*Kredit Gratis*: Kamu dapat 5 kredit ini *setiap hari*. Kredit ini akan di-reset (diisi ulang) setiap jam 7 pagi WIB. Sisa kredit gratis dari hari kemarin akan hangus.\n\n*Kredit Berbayar*: Ini kredit yang kamu beli lewat `/topup`. Kredit ini *nggak ada masa berlakunya* (nggak akan hangus) dan baru akan terpakai kalau kredit gratismu sudah habis.",
+  "force_subscribe_message": "<b>One More Step!</b> 🔑\n\nFitur ini khusus untuk anggota channel kami. Yuk, gabung dulu untuk melanjutkan. Setelah bergabung, silakan coba lagi ya.",
+  "force_subscribe_button": "🔑 Gabung Channel",
+  "button_topup_contextual": "💰 Mau Isi Ulang Kredit?"
 }
