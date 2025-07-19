@@ -620,19 +620,18 @@ func (h *Handler) handleCancel(message *tgbotapi.Message) {
 
 // FUNGSI BARU UNTUK TOMBOL BATAL
 func (h *Handler) handleCancelCallback(callback *tgbotapi.CallbackQuery) {
-	h.userStatesMutex.Lock()         // <-- DITAMBAHKAN: Mengunci sebelum mengakses
+	h.userStatesMutex.Lock()   
+	delete(h.userStates, callback.From.ID)
 	defer h.userStatesMutex.Unlock() 
-	if _, ok := h.userStates[callback.From.ID]; ok {
-		delete(h.userStates, callback.From.ID)
-		
-		user, _ := h.getOrCreateUser(callback.From)
-		lang := user.LanguageCode
-		
-		// Edit pesan sebelumnya untuk menghapus tombol dan memberi konfirmasi
-		responseText := h.Localizer.Get(lang, "flow_cancelled")
-		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, responseText)
-		h.Bot.Send(msg)
-	}
+
+	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+    h.Bot.Request(deleteMsg)
+
+	dummyMessage := &tgbotapi.Message{
+        From: callback.From,
+        Chat: callback.Message.Chat,
+    }
+    h.handleImageCommand(dummyMessage)
 }
 
 
@@ -730,30 +729,42 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 	h.userStates[user.TelegramID] = modelID
 	h.userStatesMutex.Unlock()
 
-	var text string
+	var warningText string
+    var mainText string
 
-	if selectedModel.AcceptsImageInput {
-		text = fmt.Sprintf("<b>%s</b>\n\nModel ini mendukung referensi gambar. Silakan kirim gambar dengan prompt di dalam caption, atau cukup kirim prompt teks saja.", selectedModel.Name)
-	} else {
-		text = fmt.Sprintf("<b>%s</b>\n\nSekarang, masukkan prompt kamu.", selectedModel.Name)
+    // 1. Siapkan peringatan untuk model yang hanya bisa 1 gambar.
+    if user.NumOutputs > 1 && !selectedModel.ConfigurableNumOutputs {
+        warningText = h.Localizer.Get(lang, "single_output_warning")
+    }
+
+	args := map[string]string{
+		"model_name":        selectedModel.Name,
+		"model_description": selectedModel.Description,
 	}
 
-	// Tambahkan peringatan jika pengguna akan membuat lebih dari 1 gambar
-	if user.NumOutputs > 1 {
-		// Hanya tampilkan jika model mendukung jumlah output yang bisa dikonfigurasi
-		if selectedModel.ConfigurableNumOutputs {
-			totalCost := selectedModel.Cost * user.NumOutputs
-			warningArgs := map[string]string{
-				"num_images": strconv.Itoa(user.NumOutputs),
-				"total_cost": strconv.Itoa(totalCost),
-			}
-			warningText := h.Localizer.Getf(lang, "multiple_images_warning", warningArgs)
-			text += warningText // Gabungkan pesan prompt dengan peringatan
-		}
-	}
+    // 2. Siapkan teks utama.
+    if selectedModel.AcceptsImageInput {
+        mainText =  h.Localizer.Getf(lang, "enter_prompt_with_image_option", args)
+    } else {
+        mainText = h.Localizer.Getf(lang, "enter_prompt_without_image_option", args)
+    }
 
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
-	msg.ParseMode = "HTML"
+    // 3. Gabungkan peringatan dan teks utama.
+    fullText := warningText + mainText
+
+    // 4. Tambahkan peringatan biaya jika diperlukan.
+    if user.NumOutputs > 1 && selectedModel.ConfigurableNumOutputs {
+        totalCost := selectedModel.Cost * user.NumOutputs
+        warningArgs := map[string]string{
+            "num_images": strconv.Itoa(user.NumOutputs),
+            "total_cost": strconv.Itoa(totalCost),
+        }
+        costWarning := h.Localizer.Getf(lang, "multiple_images_warning", warningArgs)
+        fullText += costWarning // Tambahkan ke `fullText` yang sudah ada.
+    }
+
+    msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fullText)
+    msg.ParseMode = "HTML"
 
 	if selectedModel.ShowTemplates {
 		templateButton := tgbotapi.NewInlineKeyboardButtonData("✨ Choose from Template", "show_templates:0")

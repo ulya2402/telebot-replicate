@@ -73,5 +73,7 @@
   "faq_q7_answer": "There are 2 types of credits: *Free* & *Paid*.\n\n*Free Credits*: You get 5 of these *every day*. They reset at midnight (00:00 UTC). Any unused free credits from the previous day will expire.\n\n*Paid Credits*: These are the credits you purchase via `/topup`. They *do not expire* and are only used after your daily free credits have run out.",
   "force_subscribe_message": "<b>One More Step!</b> 🔑\n\nThis feature is exclusive to our channel members. Please join us to continue, then try again.",
   "force_subscribe_button": "🔑 Join Channel",
-  "button_topup_contextual": "💰 Top Up Credits?"
+  "button_topup_contextual": "💰 Top Up Credits?",
+  "single_output_warning": "<b>Info:</b> This model can only generate 1 image. Your number of images setting will be temporarily ignored.\n\n",
+  "enter_prompt_without_image_option": "Please enter your prompt."
   }
