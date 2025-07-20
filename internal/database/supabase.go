@@ -25,6 +25,12 @@ type User struct {
 	NumOutputs          int       `json:"num_outputs"`
 }
 
+type Group struct {
+	GroupID    int64     `json:"group_id,omitempty"`
+	GroupTitle string    `json:"group_title"`
+	AddedAt    time.Time `json:"added_at,omitempty"`
+}
+
 type Client struct {
 	*supa.Client
 }
@@ -126,4 +132,39 @@ func (c *Client) GetStatistics() (*Statistics, error) {
     stats.PremiumUsers = int(premiumUsers[0]["count"].(float64))
 
     return &stats, nil
+}
+
+// Ditambahkan: Fungsi untuk menyimpan grup baru ke DB
+func (c *Client) CreateGroup(group *Group) error {
+	var results []Group
+	_, err := c.From("groups").Insert(group, false, "do-nothing", "", "exact").ExecuteTo(&results)
+	if err != nil {
+		log.Printf("ERROR: Failed to create group %d: %v", group.GroupID, err)
+	} else {
+		log.Printf("INFO: Bot added to group %d (%s) and saved to DB.", group.GroupID, group.GroupTitle)
+	}
+	return err
+}
+
+// Ditambahkan: Fungsi untuk menghapus grup dari DB
+func (c *Client) DeleteGroup(groupID int64) error {
+	var results []Group
+	_, err := c.From("groups").Delete("", "exact").Eq("group_id", strconv.FormatInt(groupID, 10)).ExecuteTo(&results)
+	if err != nil {
+		log.Printf("ERROR: Failed to delete group %d: %v", groupID, err)
+	} else {
+		log.Printf("INFO: Bot removed from group %d and deleted from DB.", groupID)
+	}
+	return err
+}
+
+// Ditambahkan: Fungsi untuk mengambil semua grup dari DB
+func (c *Client) GetAllGroups() ([]Group, error) {
+	var results []Group
+	_, err := c.From("groups").Select("*", "exact", false).ExecuteTo(&results)
+	if err != nil {
+		log.Printf("ERROR: Failed to get all groups: %v", err)
+		return nil, err
+	}
+	return results, nil
 }

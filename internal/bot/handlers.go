@@ -149,6 +149,8 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 		}
 	case update.CallbackQuery != nil:
 		h.handleCallbackQuery(update.CallbackQuery)
+	case update.MyChatMember != nil:
+        h.handleMyChatMemberUpdate(update.MyChatMember)
 	}
 }
 
@@ -156,7 +158,7 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	command := message.Command()
 
 	// Cek apakah perintah ini khusus admin
-	isAdminCommand := command == "stats" || command == "addcredits" || command == "broadcast"
+	isAdminCommand := command == "stats" || command == "addcredits" || command == "broadcast" || command == "broadcastgroup"
 	if isAdminCommand && !h.isAdmin(message.From.ID) {
 		msg := h.newReplyMessage(message, h.Localizer.Get("en", "permission_denied"))
 		h.Bot.Send(msg)
@@ -215,6 +217,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleStats(message)
 	case "addcredits":
 		h.handleAddCredits(message)
+	case "broadcastgroup":
+        h.handleBroadcastGroup(message)
 	case "broadcast":
 		h.handleBroadcast(message)
 	case "settings":
@@ -1339,4 +1343,110 @@ func (h *Handler) handleFaqBack(callback *tgbotapi.CallbackQuery) {
     keyboard := h.createFaqKeyboard(lang)
     msg.ReplyMarkup = &keyboard
     h.Bot.Send(msg)
+}
+
+// Ditambahkan: Fungsi untuk menangani saat bot join/leave grup
+func (h *Handler) handleMyChatMemberUpdate(update *tgbotapi.ChatMemberUpdated) {
+	// Hanya proses jika update terjadi di grup atau supergroup
+	if !(update.Chat.IsGroup() || update.Chat.IsSuperGroup()) {
+		return
+	}
+
+	// Cek status baru bot
+	newStatus := update.NewChatMember.Status
+	// Cek status lama bot
+	oldStatus := update.OldChatMember.Status
+
+	// Logika: Bot ditambahkan ke grup
+	// (Status berubah dari 'left' atau 'kicked' menjadi 'member')
+	if (oldStatus == "left" || oldStatus == "kicked") && newStatus == "member" {
+		newGroup := &database.Group{
+			GroupID:    update.Chat.ID,
+			GroupTitle: update.Chat.Title,
+		}
+		h.DB.CreateGroup(newGroup)
+	}
+
+	// Logika: Bot dikeluarkan dari grup
+	// (Status berubah dari 'member' atau 'administrator' menjadi 'left' atau 'kicked')
+	if (oldStatus == "member" || oldStatus == "administrator") && (newStatus == "left" || newStatus == "kicked") {
+		h.DB.DeleteGroup(update.Chat.ID)
+	}
+}
+
+// Ditambahkan: Fungsi untuk broadcast ke grup
+// Diperbarui: Fungsi broadcast grup kini mendukung gambar
+// Diperbarui: Fungsi broadcast grup kini mendukung gambar (Perbaikan Logika Caption)
+// Diperbarui: Fungsi broadcast grup mendukung gambar via caption atau reply
+func (h *Handler) handleBroadcastGroup(message *tgbotapi.Message) {
+	lang := "en"
+	var broadcastText, photoFileID string
+
+	// Selalu ambil teks dari argumen perintah pada pesan saat ini.
+	broadcastText = message.CommandArguments()
+
+	// Prioritas 1: Cek apakah pesan ini sendiri memiliki foto (metode caption).
+	if message.Photo != nil && len(message.Photo) > 0 {
+		photoFileID = message.Photo[len(message.Photo)-1].FileID
+	} else if message.ReplyToMessage != nil && message.ReplyToMessage.Photo != nil && len(message.ReplyToMessage.Photo) > 0 {
+		// Prioritas 2: Jika tidak, cek apakah pesan ini me-reply sebuah pesan dengan foto.
+		photoFileID = message.ReplyToMessage.Photo[len(message.ReplyToMessage.Photo)-1].FileID
+	}
+
+	// Validasi: Pastikan ada sesuatu untuk dikirim (teks atau foto)
+	if broadcastText == "" && photoFileID == "" {
+		msg := h.newReplyMessage(message, "Usage:\n1. /broadcastgroup [message]\n2. Reply to an image with /broadcastgroup [caption]\n3. Send an image with /broadcastgroup [caption] in the caption.")
+		h.Bot.Send(msg)
+		return
+	}
+
+	allGroups, err := h.DB.GetAllGroups()
+	if err != nil {
+		log.Printf("ERROR: Failed to get all groups for broadcast: %v", err)
+		return
+	}
+	if len(allGroups) == 0 {
+		msg := h.newReplyMessage(message, "The bot is not a member of any groups.")
+		h.Bot.Send(msg)
+		return
+	}
+
+	args := map[string]string{"group_count": strconv.Itoa(len(allGroups))}
+	startMsgText := "⏳ Starting group broadcast to {group_count} groups..."
+	startMsg := h.newReplyMessage(message, h.Localizer.Getf(lang, startMsgText, args))
+	h.Bot.Send(startMsg)
+
+	go func(adminChatID int64) {
+		sentCount := 0
+		for _, group := range allGroups {
+			var err error
+			// Jika ada FileID foto, kirim sebagai foto
+			if photoFileID != "" {
+				photoMsg := tgbotapi.NewPhoto(group.GroupID, tgbotapi.FileID(photoFileID))
+				photoMsg.Caption = broadcastText
+				photoMsg.ParseMode = "HTML"
+				_, err = h.Bot.Send(photoMsg)
+			} else { // Jika tidak, kirim sebagai pesan teks biasa
+				textMsg := tgbotapi.NewMessage(group.GroupID, broadcastText)
+				textMsg.ParseMode = "HTML"
+				_, err = h.Bot.Send(textMsg)
+			}
+
+			if err == nil {
+				sentCount++
+			} else {
+				log.Printf("WARN: Failed to send broadcast to group %d (%s). Removing from DB. Error: %v", group.GroupID, group.GroupTitle, err)
+				h.DB.DeleteGroup(group.GroupID)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		finishArgs := map[string]string{
+			"sent_count":  strconv.Itoa(sentCount),
+			"total_count": strconv.Itoa(len(allGroups)),
+		}
+		finishMsgText := "✅ Group broadcast finished. Sent to {sent_count} of {total_count} groups."
+		finishMsg := tgbotapi.NewMessage(adminChatID, h.Localizer.Getf(lang, finishMsgText, finishArgs))
+		h.Bot.Send(finishMsg)
+	}(message.Chat.ID)
 }
