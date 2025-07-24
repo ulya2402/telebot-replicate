@@ -3,6 +3,8 @@ package bot
 import (
 	"fmt"
 	"strconv"
+	"strings"
+	"encoding/json"
 	"telegram-ai-bot/internal/config"
 
 	"telegram-ai-bot/internal/database"
@@ -279,4 +281,117 @@ func (h *Handler) createFaqAnswerKeyboard(lang string) tgbotapi.InlineKeyboardMa
             tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "faq_back"),
         ),
     )
+}
+
+func (h *Handler) createAdvancedSettingsKeyboard(lang string, model *config.Model, user *database.User) (tgbotapi.InlineKeyboardMarkup, string) {
+	var settingsText strings.Builder
+	settingsText.WriteString("<b>Advanced Settings</b>\n\n")
+
+	var customSettings map[string]interface{}
+	if user.CustomSettings != "" {
+		json.Unmarshal([]byte(user.CustomSettings), &customSettings)
+	} else {
+		customSettings = make(map[string]interface{})
+	}
+
+	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+	var currentRow []tgbotapi.InlineKeyboardButton
+
+	for _, param := range model.Parameters {
+		currentValue, ok := customSettings[param.Name]
+		if !ok || currentValue == nil {
+			if param.Default != nil {
+				currentValue = param.Default
+			} else {
+				currentValue = "Not Set"
+			}
+		}
+
+		// Format nilai agar lebih rapi
+		var displayValue string
+		switch v := currentValue.(type) {
+		case float64:
+			// Cek apakah angka tersebut sebenarnya integer
+			if v == float64(int(v)) {
+				displayValue = fmt.Sprintf("%d", int(v))
+			} else {
+				displayValue = fmt.Sprintf("%.1f", v)
+			}
+		default:
+			displayValue = fmt.Sprintf("%v", currentValue)
+		}
+
+
+		settingsText.WriteString(fmt.Sprintf("▸ %s: <code>%s</code>\n", param.Label, displayValue))
+
+		button := tgbotapi.NewInlineKeyboardButtonData("Change "+param.Label, fmt.Sprintf("adv_setting_select:%s:%s", model.ID, param.Name))
+		currentRow = append(currentRow, button)
+
+		if len(currentRow) == 2 {
+			keyboardRows = append(keyboardRows, currentRow)
+			currentRow = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+
+	if len(currentRow) > 0 {
+		keyboardRows = append(keyboardRows, currentRow)
+	}
+
+	backButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), fmt.Sprintf("adv_setting_back:%s", model.ID))
+	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(backButton))
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), settingsText.String()
+}
+
+
+func (h *Handler) createCancelFlowKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
+		),
+	)
+}
+
+func (h *Handler) createStyleConfirmationKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🚀 Mulai Generate Sekarang", "style_confirm:generate_now"),
+			tgbotapi.NewInlineKeyboardButtonData("🎨 Pilih Gaya", "style_confirm:show_styles"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
+		),
+	)
+}
+
+func (h *Handler) createStyleSelectionKeyboard(styles []config.StyleTemplate, lang string) tgbotapi.InlineKeyboardMarkup {
+	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+	var currentRow []tgbotapi.InlineKeyboardButton
+
+	// Tombol "Lewati" di baris pertama
+	skipButtonText := h.Localizer.Get(lang, "style_skip_button")
+	skipButton := tgbotapi.NewInlineKeyboardButtonData(skipButtonText, "style_select:style_none")
+	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(skipButton))
+	// Tombol-tombol gaya lainnya
+	for _, style := range styles {
+		if style.ID == "style_none" { continue } 
+		
+		callbackData := fmt.Sprintf("style_select:%s", style.ID)
+		button := tgbotapi.NewInlineKeyboardButtonData(style.Name, callbackData)
+		currentRow = append(currentRow, button)
+
+		if len(currentRow) == 2 {
+			keyboardRows = append(keyboardRows, currentRow)
+			currentRow = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+	if len(currentRow) > 0 {
+		keyboardRows = append(keyboardRows, currentRow)
+	}
+
+	// PERBAIKAN: Gunakan `lang` yang sudah menjadi parameter fungsi
+	cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
+	
+	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
 }

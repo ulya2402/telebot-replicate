@@ -75,5 +75,8 @@
   "force_subscribe_button": "🔑 Join Channel",
   "button_topup_contextual": "💰 Top Up Credits?",
   "single_output_warning": "<b>Info:</b> This model can only generate 1 image. Your number of images setting will be temporarily ignored.\n\n",
-  "enter_prompt_without_image_option": "Please enter your prompt."
+  "enter_prompt_without_image_option": "Please enter your prompt.",
+  "style_flow_title": "<b>Model selected!</b> ✅\n\nNow, please select a visual style for your generation, or skip if you don't need one.",
+  "style_select_prompt": "<b>Style: {style_name}</b>\n\nPlease enter your prompt now.",
+  "style_skip_button": "➡️ Skip (No Style)"
   }

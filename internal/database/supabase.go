@@ -23,6 +23,7 @@ type User struct {
 	GeneratedImageCount int       `json:"generated_image_count"`
 	AspectRatio         string    `json:"aspect_ratio"` // <-- Tambahkan ini
 	NumOutputs          int       `json:"num_outputs"`
+	CustomSettings       string    `json:"custom_settings,omitempty"`
 }
 
 type Group struct {

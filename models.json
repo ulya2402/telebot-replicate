@@ -7,9 +7,41 @@
       "cost": 1,
       "enabled": true,
       "accepts_image_input": false,
-      "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true,
-      "show_templates": false
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
+        },
+        {
+          "name": "num_outputs",
+          "label": "Number Ouputs",
+          "type": "integer",
+          "default": "1",
+          "description": "Number of outputs to generate.",
+          "options": ["1", "2", "3", "4"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation"
+        }
+      ]
     },
     {
       "id": "imagen-4-fast",
@@ -22,7 +54,17 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "description":"Imagen 4 Fast is the faster version of Google Imagen 4 model. Its perfect when you care more about speed and lower cost than ultra-high quality. You can still adjust the image aspect ratio, but the number of outputs is fixed. Great for quick drafts or early-stage ideas.",
-      "show_templates": false
+      "show_templates": false,
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "9:16", "4:3", "3:4", "1:1"]
+        }
+      ]
     },
     {
       "id": "imagen-3-fast",
@@ -35,7 +77,17 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Imagen 3 Fast is a faster and more affordable version of Imagen 3. It’s perfect when speed or cost matters more than the highest image quality. You can still adjust the aspect ratio, but the number of outputs is fixed. Great for fast prototyping or testing out ideas."
+      "description":"Imagen 3 Fast is a faster and more affordable version of Imagen 3. It’s perfect when speed or cost matters more than the highest image quality. You can still adjust the aspect ratio, but the number of outputs is fixed. Great for fast prototyping or testing out ideas.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "9:16", "4:3", "3:4", "1:1"]
+        }
+      ]
     },
     {
       "id": "flux-dev-lora",
@@ -44,11 +96,53 @@
       "tier": "standard",
       "cost": 15,
       "enabled": true,
-      "accepts_image_input": false,
-      "configurable_aspect_ratio": true,
-      "configurable_num_outputs": true,
+      "image": true,
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Flux Dev Lora is a special version of the Flux Dev text-to-image model that supports fast LoRA (Low-Rank Adaptation) inference. It’s great for generating images with fine-tuned styles based on your needs. You can customize both the aspect ratio and the number of outputs, making it super flexible for creative exploration."
+      "description":"Flux Dev Lora is a special version of the Flux Dev text-to-image model that supports fast LoRA (Low-Rank Adaptation) inference. It’s great for generating images with fine-tuned styles based on your needs. You can customize both the aspect ratio and the number of outputs, making it super flexible for creative exploration.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "prompt_strength",
+          "label": "Prompt Srength",
+          "type": "number",
+          "default": 0.8,
+          "description": "Prompt strength when using img2img. 1.0 corresponds to full destruction of information in image.",
+          "options": ["0.1", "0.3", "0.5", "0.6", "0.7", "0.8", "0.9", "1"]
+        },
+        {
+          "name": "num_outputs",
+          "label": "Number Ouputs",
+          "type": "integer",
+          "default": "1",
+          "description": "Number of outputs to generate.",
+          "options": ["1", "2", "3", "4"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": "80",
+          "description": "Number of outputs to generate.",
+          "options": ["40", "60", "70", "80", "90", "100"]
+        }
+      ]
     },
     {
       "id": "recraft-v3",
@@ -74,7 +168,17 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Imagen 4 is Google’s flagship text-to-image model. It delivers high-quality, detailed, and accurate visuals from text prompts. Perfect for when you need top-tier image generation. You can customize the aspect ratio, but the number of outputs is fixed."
+      "description":"Imagen 4 is Google’s flagship text-to-image model. It delivers high-quality, detailed, and accurate visuals from text prompts. Perfect for when you need top-tier image generation. You can customize the aspect ratio, but the number of outputs is fixed.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        }
+      ]
     },
     {
       "id": "flux-kontext-pro",
@@ -87,7 +191,33 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description": "Flux Kontext Pro is a cutting-edge image editing model that works using text prompts. You can transform or modify images using natural language, and it delivers high-quality, accurate, and consistent results. It supports image input and aspect ratio adjustments — perfect for seamless and smart image editing."
+      "description": "Flux Kontext Pro is a cutting-edge image editing model that works using text prompts. You can transform or modify images using natural language, and it delivers high-quality, accurate, and consistent results. It supports image input and aspect ratio adjustments — perfect for seamless and smart image editing.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "safety_tolerance",
+          "label": "Safety Tolerance",
+          "type": "integer",
+          "default": "2",
+          "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
     },
     {
       "id": "gen4-image",
@@ -96,11 +226,39 @@
       "tier": "premium",
       "cost": 25,
       "enabled": true,
-      "accepts_image_input": false,
-      "configurable_aspect_ratio": true,
+      "accepts_image_input": true,
+      "image_parameter_name": "reference_images",
+      "configurable_aspect_ratio": false,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Gen 4 by Runway is a next-gen image model that lets you create highly accurate images. Perfect for generating exactly what you have in mind. You can adjust the aspect ratio, but the number of outputs is fixed."
+      "description":"Gen 4 by Runway is a next-gen image model that lets you create highly accurate images. Perfect for generating exactly what you have in mind. You can adjust the aspect ratio, but the number of outputs is fixed.",
+      "parameters":[
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "resolution",
+          "label": "Resolution",
+          "type": "string",
+          "default": "1080p",
+          "description": "Image resolution.",
+          "options": ["720p", "1080p"]
+        }
+
+      ]
     },
     {
       "id": "flux-pro",
@@ -113,7 +271,25 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Flux Pro is a premium image generation model that delivers top-tier results. It excels in prompt accuracy, stunning visual quality, sharp details, and a wide variety of outputs. Perfect for high-level creative or professional projects. Aspect ratio is customizable, but the number of outputs is fixed."
+      "description":"Flux Pro is a premium image generation model that delivers top-tier results. It excels in prompt accuracy, stunning visual quality, sharp details, and a wide variety of outputs. Perfect for high-level creative or professional projects. Aspect ratio is customizable, but the number of outputs is fixed.",
+      "parameters": [
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Leave empty for random. Use a number for consistent results.",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
+            "name": "output_quality",
+            "label": "Output Quality",
+            "type": "integer",
+            "default": 90,
+            "min": 1,
+            "max": 100
+        }
+      ]
     },
     {
       "id": "ideogram-v3-balanced",

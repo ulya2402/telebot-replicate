@@ -1,0 +1,62 @@
+[
+  {
+    "id": "style_none",
+    "name": "No Style",
+    "prompt_suffix": ""
+  },
+  {
+    "id": "style_cinematic",
+    "name": "🎬 Cinematic",
+    "prompt_suffix": ", cinematic, dramatic lighting, epic composition, 8k, photorealistic"
+  },
+  {
+    "id": "style_anime",
+    "name": "🌸 Anime",
+    "prompt_suffix": ", anime style, studio ghibli, vibrant, detailed"
+  },
+  {
+    "id": "style_3d",
+    "name": "🎨 3D Render",
+    "prompt_suffix": ", 3D render, blender, octane render, high detail"
+  },
+  {
+    "id": "style_photo",
+    "name": "📷 Photography",
+    "prompt_suffix": ", photorealistic, professional photography, 85mm lens, sharp focus"
+  },
+  {
+    "id": "style_fantasy",
+    "name": "✨ Fantasy",
+    "prompt_suffix": ", fantasy art, intricate details, epic, vibrant colors, by greg rutkowski"
+  },
+  {
+    "id": "style_painting",
+    "name": "🖌️ Painting",
+    "prompt_suffix": ", digital painting, oil painting, impressionism, thick brush strokes"
+  },
+  {
+    "id": "style_pixel",
+    "name": "🕹️ Pixel Art",
+    "prompt_suffix": ", pixel art, 16-bit, detailed, vibrant, retro game style"
+  },
+  {
+    "id": "style_comic",
+    "name": "💥 Comic Book",
+    "prompt_suffix": ", comic book style, pop art, bold lines, vibrant colors, halftone dots"
+  },
+  {
+    "id": "style_retro",
+    "name": "📼 Retro Futurism",
+    "prompt_suffix": ", retro futurism, 1980s style, neon, chrome, vintage sci-fi"
+  },
+  {
+    "id": "style_minimalist",
+    "name": "🤍 Minimalist",
+    "prompt_suffix": ", minimalist, clean lines, simple, elegant, neutral colors"
+  },
+  {
+    "id": "style_vaporwave",
+    "name": "🌴 Vaporwave",
+    "prompt_suffix": ", vaporwave aesthetic, neon grids, pink and blue hues, glitch art, roman statues"
+  }
+]

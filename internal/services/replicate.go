@@ -21,20 +21,42 @@ func NewReplicateClient(apiToken string) (*ReplicateClient, error) {
 	return &ReplicateClient{client: r8}, nil
 }
 
-func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, aspectRatio string, numOutputs int) ([]string, error) {
+func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, imageParamName string, aspectRatio string, numOutputs int, customParams map[string]interface{}) ([]string, error) {
 	input := replicate.PredictionInput{
 		"prompt": prompt,
 	}
 
 	// Tambahkan parameter opsional ke input jika nilainya ada
 	if imageURL != "" {
-		input["input_image"] = imageURL
+		// Gunakan imageParamName jika ada, jika tidak gunakan default "input_image"
+		paramName := "input_image"
+		if imageParamName != "" {
+			paramName = imageParamName
+		}
+		input[paramName] = imageURL
 	}
+
 	if aspectRatio != "" {
 		input["aspect_ratio"] = aspectRatio
 	}
-	if numOutputs > 0 {
+	if numOutputs > 1 {
 		input["num_outputs"] = numOutputs
+	}
+
+	for key, value := range customParams {
+		if value != nil {
+			log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
+			input[key] = value
+		}
+	}
+
+	if customParams != nil {
+		for key, value := range customParams {
+			if value != nil {
+				log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
+				input[key] = value
+			}
+		}
 	}
 
 	output, err := c.client.Run(ctx, modelID, input, nil)

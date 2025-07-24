@@ -11,6 +11,27 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type StyleTemplate struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	PromptSuffix string `json:"prompt_suffix"`
+}
+
+func LoadStyles(file string) []StyleTemplate {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatalf("FATAL: Could not read styles file %s: %v", file, err)
+	}
+
+	var styles []StyleTemplate
+	if err := json.Unmarshal(data, &styles); err != nil {
+		log.Fatalf("FATAL: Could not parse styles file %s: %v", file, err)
+	}
+
+	log.Printf("INFO: Loaded %d style templates", len(styles))
+	return styles
+}
+
 type Config struct {
 	TelegramBotToken   string
 	SupabaseURL        string
@@ -23,6 +44,17 @@ type Config struct {
 	ForceSubscribeChannelID int64
 }
 
+type Parameter struct {
+	Name        string      `json:"name"`
+	Label       string      `json:"label"`
+	Type        string      `json:"type"`
+	Default     interface{} `json:"default,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Min         float64     `json:"min,omitempty"`
+	Max         float64     `json:"max,omitempty"`
+	Options     []string    `json:"options,omitempty"`
+}
+
 type Model struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -32,9 +64,11 @@ type Model struct {
 	Cost        int    `json:"cost"`
 	Enabled     bool   `json:"enabled"`
 	AcceptsImageInput bool   `json:"accepts_image_input"`
+	ImageParameterName      string      `json:"image_parameter_name,omitempty"` // <-- TAMBAHKAN INI
 	ConfigurableAspectRatio bool `json:"configurable_aspect_ratio"` // <-- Tambahkan ini
 	ConfigurableNumOutputs  bool `json:"configurable_num_outputs"`
 	ShowTemplates             bool   `json:"show_templates"`
+	Parameters              []Parameter `json:"parameters,omitempty"`
 }
 
 type PromptTemplate struct {

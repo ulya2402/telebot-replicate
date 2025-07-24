@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"io/ioutil" // <-- TAMBAHKAN
@@ -23,6 +24,12 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+type PendingGeneration struct {
+	ModelID  string
+	Prompt   string
+	ImageURL string
+}
+
 type Handler struct {
 	Bot             *tgbotapi.BotAPI
 	DB              *database.Client
@@ -30,6 +37,7 @@ type Handler struct {
 	Providers       []config.Provider
 	Models          []config.Model
 	PromptTemplates []config.PromptTemplate
+	Styles                []config.StyleTemplate  
 	Replicate       *services.ReplicateClient
 	userStates      map[int64]string
 	userStatesMutex sync.Mutex
@@ -38,9 +46,10 @@ type Handler struct {
 	lastGeneratedURLsMutex sync.Mutex 
 	PaymentHandler *payments.PaymentHandler
 	GroupHandler          *GroupHandler
+	pendingGenerations    map[int64]*PendingGeneration 
 }
 
-func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, providers []config.Provider, models []config.Model, templates []config.PromptTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
+func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, providers []config.Provider, models []config.Model, templates []config.PromptTemplate, styles []config.StyleTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
 	h := &Handler{
 		Bot:               api,
 		DB:                db,
@@ -48,11 +57,13 @@ func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localizati
 		Providers:         providers,
 		Models:            models,
 		PromptTemplates:   templates,
+		Styles:              styles, 
 		Replicate:         replicate,
 		userStates:        make(map[int64]string),
 		Config:            cfg,
 		lastGeneratedURLs: make(map[int64][]string),
 		PaymentHandler:    paymentHandler,
+		pendingGenerations: make(map[int64]*PendingGeneration),
 	}
 	h.GroupHandler = NewGroupHandler(h)
 	return h
@@ -395,7 +406,8 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	action := parts[0]
 	data := ""
 	if len(parts) > 1 {
-		data = parts[1]
+		// Gabungkan sisa parts jika ada, untuk kasus seperti set_ar:9:16
+		data = strings.Join(parts[1:], ":")
 	}
 
 	h.Bot.Request(tgbotapi.NewCallback(callback.ID, ""))
@@ -456,6 +468,51 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		h.navigateModels(callback, providerID, page)
 	case "model_select":
 		h.handleModelSelection(callback, data)
+	case "adv_setting_open":
+		h.handleOpenAdvancedSettings(callback, data) // data = modelID
+	case "adv_setting_select":
+		// 'parts' sudah didefinisikan di atas dan berisi seluruh data.
+		// parts[0] = "adv_setting_select"
+		// parts[1] = modelID
+		// parts[2] = paramName
+		if len(parts) > 2 {
+			h.handleSelectAdvancedSetting(callback, parts[1], parts[2])
+		}
+	case "adv_setting_back":
+		// Ambil state pengguna saat ini untuk mengetahui model & gaya yang dipilih
+		h.userStatesMutex.Lock()
+		state, ok := h.userStates[callback.From.ID]
+		h.userStatesMutex.Unlock()
+
+		if !ok || !strings.HasPrefix(state, "prompt_for:") {
+			// Jika state rusak, kembali ke pemilihan model sebagai fallback
+			h.handleModelSelection(callback, data) // data adalah modelID
+			return
+		}
+
+		parts := strings.Split(state, ":")
+		if len(parts) < 3 {
+			// Jika state rusak, kembali ke pemilihan model sebagai fallback
+			h.handleModelSelection(callback, data) // data adalah modelID
+			return
+		}
+
+		modelID := parts[1]
+		styleID := parts[2]
+		
+		// Panggil helper untuk kembali ke layar prompt.
+		// `isEdit` diatur ke true karena kita mengedit pesan "Advanced Settings".
+		h.showPromptEntryScreen(callback, modelID, styleID, true)
+	case "adv_set_option":
+		// Format: adv_set_option:modelID:paramName:value
+		// Value bisa mengandung ':', contohnya '16:9'
+		if len(parts) >= 4 {
+			modelID := parts[1]
+			paramName := parts[2]
+			// Gabungkan kembali semua bagian value yang mungkin terpisah oleh ':'
+			optionValue := strings.Join(parts[3:], ":")
+			h.handleSetOption(callback, modelID, paramName, optionValue)
+		}
 	case "lang_select":
 		h.handleLangSelection(callback, data)
 	case "show_templates":
@@ -544,6 +601,12 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
         h.handleFaqShow(callback, data)
     case "faq_back":
         h.handleFaqBack(callback)
+	case "style_confirm":
+		h.handleStyleCallback(callback, data)
+		return // Return agar tidak dilanjutkan ke switch di bawah
+	case "style_select":
+		h.handleStyleSelection(callback, data)
+		return // Return agar tidak dilanjutkan ke switch di bawah
 
 	}
 }
@@ -655,11 +718,16 @@ func (h *Handler) navigateTemplates(callback *tgbotapi.CallbackQuery, page int) 
 
 func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, templateID string) {
 	h.userStatesMutex.Lock()
-	modelID, ok := h.userStates[callback.From.ID]
-	h.userStatesMutex.Unlock()
-	if !ok {
+	state, ok := h.userStates[callback.From.ID]
+	// Pastikan state-nya benar sebelum memproses
+	if !ok || !strings.HasPrefix(state, "prompt_for:") {
+		h.userStatesMutex.Unlock()
 		return
 	}
+	modelID := strings.TrimPrefix(state, "prompt_for:")
+	h.userStatesMutex.Unlock()
+
+
 	var selectedTemplate *config.PromptTemplate
 	for _, t := range h.PromptTemplates {
 		if t.ID == templateID {
@@ -670,10 +738,12 @@ func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, temp
 	if selectedTemplate == nil {
 		return
 	}
+
 	user, _ := h.getOrCreateUser(callback.From)
 	messageForReply := callback.Message
-	
-	// Pemanggilan yang sudah diperbaiki: tanpa imageURL
+
+	// PERBAIKAN: Panggil triggerImageGeneration dengan argumen yang benar.
+	// Karena template tidak memiliki advanced settings, kita berikan nil.
 	h.triggerImageGeneration(user, messageForReply, modelID, selectedTemplate.Prompt)
 
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
@@ -708,15 +778,12 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 		return
 	}
 
-	// --- MULAI PERUBAHAN ---
-	// Cek total kredit dari kedua dompet
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
 	if totalAvailableCredits < selectedModel.Cost {
 		args := map[string]string{
 			"required": strconv.Itoa(selectedModel.Cost),
 			"balance":  strconv.Itoa(totalAvailableCredits),
 		}
-		// --- SELESAI PERUBAHAN ---
 		text := h.Localizer.Getf(lang, "insufficient_credits", args)
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
@@ -730,100 +797,290 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 	}
 
 	h.userStatesMutex.Lock()
-	h.userStates[user.TelegramID] = modelID
+	h.userStates[user.TelegramID] = fmt.Sprintf("awaiting_style_for:%s", modelID)
 	h.userStatesMutex.Unlock()
 
-	var warningText string
-    var mainText string
+	text := h.Localizer.Get(lang, "style_flow_title")
 
-    // 1. Siapkan peringatan untuk model yang hanya bisa 1 gambar.
-    if user.NumOutputs > 1 && !selectedModel.ConfigurableNumOutputs {
-        warningText = h.Localizer.Get(lang, "single_output_warning")
-    }
-
-	args := map[string]string{
-		"model_name":        selectedModel.Name,
-		"model_description": selectedModel.Description,
-	}
-
-    // 2. Siapkan teks utama.
-    if selectedModel.AcceptsImageInput {
-        mainText =  h.Localizer.Getf(lang, "enter_prompt_with_image_option", args)
-    } else {
-        mainText = h.Localizer.Getf(lang, "enter_prompt_without_image_option", args)
-    }
-
-    // 3. Gabungkan peringatan dan teks utama.
-    fullText := warningText + mainText
-
-    // 4. Tambahkan peringatan biaya jika diperlukan.
-    if user.NumOutputs > 1 && selectedModel.ConfigurableNumOutputs {
-        totalCost := selectedModel.Cost * user.NumOutputs
-        warningArgs := map[string]string{
-            "num_images": strconv.Itoa(user.NumOutputs),
-            "total_cost": strconv.Itoa(totalCost),
-        }
-        costWarning := h.Localizer.Getf(lang, "multiple_images_warning", warningArgs)
-        fullText += costWarning // Tambahkan ke `fullText` yang sudah ada.
-    }
-
-    msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fullText)
-    msg.ParseMode = "HTML"
-
-	if selectedModel.ShowTemplates {
-		templateButton := tgbotapi.NewInlineKeyboardButtonData("✨ Choose from Template", "show_templates:0")
-		cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(templateButton, cancelButton))
-		msg.ReplyMarkup = &keyboard
-	} else {
-		// Jika tidak, cukup beri opsi batal
-		cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(cancelButton))
-		msg.ReplyMarkup = &keyboard
-	}
-	// --- SELESAI PERUBAHAN ---
-
-
+	// Panggil keyboard untuk memilih gaya, lalu kirim pesan. Selesai.
+	keyboard := h.createStyleSelectionKeyboard(h.Styles, lang)
+	
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
-
-	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
-	h.Bot.Send(deleteMsg)
 }
 
 func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	h.userStatesMutex.Lock()
-	modelID, ok := h.userStates[message.From.ID]
+	state, ok := h.userStates[message.From.ID]
 	h.userStatesMutex.Unlock()
+
 	if !ok {
 		return
 	}
 
 	user, _ := h.getOrCreateUser(message.From)
-	var prompt, imageURL string
+	lang := user.LanguageCode
 
-	// PERUBAHAN: Cek apakah pesan berisi foto
-	if message.Photo != nil && len(message.Photo) > 0 {
-		// Ambil foto dengan resolusi tertinggi
-		bestPhoto := message.Photo[len(message.Photo)-1]
-		url, err := h.getFileURL(bestPhoto.FileID)
-		if err != nil {
-			log.Printf("ERROR: Failed to get file URL for photo: %v", err)
+	if strings.HasPrefix(state, "prompt_for:") {
+		// Format state baru: "prompt_for:model_id:style_id"
+		parts := strings.Split(state, ":")
+		if len(parts) < 3 { return } // Validasi format state
+		
+		modelID := parts[1]
+		styleID := parts[2]
+
+		var prompt, imageURL string
+		if message.Photo != nil && len(message.Photo) > 0 {
+			bestPhoto := message.Photo[len(message.Photo)-1]
+			url, err := h.getFileURL(bestPhoto.FileID)
+			if err != nil {
+				log.Printf("ERROR: Failed to get file URL for photo: %v", err)
+				return
+			}
+			imageURL = url
+			prompt = message.Caption
+		} else {
+			prompt = message.Text
+		}
+
+		if prompt == "" {
 			return
 		}
-		imageURL = url
-		prompt = message.Caption // Gunakan caption sebagai prompt
-	} else {
-		prompt = message.Text // Gunakan teks biasa sebagai prompt
-	}
+		
+		// Temukan suffix prompt dari style yang dipilih
+		var promptSuffix string
+		for _, style := range h.Styles {
+			if style.ID == styleID {
+				promptSuffix = style.PromptSuffix
+				break
+			}
+		}
+		
+		finalPrompt := prompt + promptSuffix
 
-	if prompt == "" {
-		// Jangan proses jika tidak ada prompt
+		// Panggil triggerImageGeneration dengan prompt yang sudah dimodifikasi
+		h.triggerImageGeneration(user, message, modelID, finalPrompt, imageURL)
+
+	} else if strings.HasPrefix(state, "edit_setting:") {
+		parts := strings.Split(strings.TrimPrefix(state, "edit_setting:"), ":")
+		modelID, paramName := parts[0], parts[1]
+		
+		var selectedModel *config.Model
+		var selectedParam *config.Parameter
+		for _, m := range h.Models {
+			if m.ID == modelID {
+				selectedModel = &m
+				for _, p := range m.Parameters {
+					if p.Name == paramName {
+						selectedParam = &p
+						break
+					}
+				}
+				break
+			}
+		}
+
+		if selectedModel == nil || selectedParam == nil {
+			return
+		}
+		
+		var customSettings map[string]interface{}
+		if user.CustomSettings != "" {
+			json.Unmarshal([]byte(user.CustomSettings), &customSettings)
+		} else {
+			customSettings = make(map[string]interface{})
+		}
+
+		inputValue := message.Text
+		var parsedValue interface{}
+		var err error
+
+		switch selectedParam.Type {
+		case "integer":
+			parsedValue, err = strconv.ParseInt(inputValue, 10, 64)
+			if err == nil {
+				val := parsedValue.(int64)
+				if (selectedParam.Min != 0 || selectedParam.Max != 0) && (float64(val) < selectedParam.Min || float64(val) > selectedParam.Max) {
+					err = fmt.Errorf("value out of range")
+				}
+			}
+		case "number":
+			parsedValue, err = strconv.ParseFloat(inputValue, 64)
+			if err == nil {
+				val := parsedValue.(float64)
+				if (selectedParam.Min != 0 || selectedParam.Max != 0) && (val < selectedParam.Min || val > selectedParam.Max) {
+					err = fmt.Errorf("value out of range")
+				}
+			}
+		case "string":
+			parsedValue = inputValue
+		}
+
+		if err != nil {
+			errorText := fmt.Sprintf("Invalid input. Please provide a valid value for %s.", selectedParam.Label)
+			msg := h.newReplyMessage(message, errorText)
+			h.Bot.Send(msg)
+			return
+		}
+		
+		customSettings[paramName] = parsedValue
+
+		settingsJSON, _ := json.Marshal(customSettings)
+		user.CustomSettings = string(settingsJSON)
+		h.DB.UpdateUser(user)
+
+		h.userStatesMutex.Lock()
+		delete(h.userStates, user.TelegramID)
+		h.userStatesMutex.Unlock()
+
+		keyboard, text := h.createAdvancedSettingsKeyboard(lang, selectedModel, user)
+		msg := h.newReplyMessage(message, text)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+		
+		// Hapus pesan "Please enter a new value..."
+		deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID - 1)
+		h.Bot.Request(deleteMsg)
+	}
+}
+
+// Fungsi baru untuk memulai alur
+func (h *Handler) startStyleConfirmationFlow(message *tgbotapi.Message) {
+	user, _ := h.getOrCreateUser(message.From)
+	lang := user.LanguageCode
+
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_style_confirmation"
+	h.userStatesMutex.Unlock()
+
+	text := "<b>Prompt diterima!</b> ✅\n\nPilih gaya di bawah untuk menyempurnakan gambarmu, atau langsung mulai proses generasi."
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "HTML"
+	keyboard := h.createStyleConfirmationKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+// Fungsi baru untuk menangani semua callback dari alur gaya
+func (h *Handler) handleStyleCallback(callback *tgbotapi.CallbackQuery, action string) {
+	userID := callback.From.ID
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	// Ambil data yang tersimpan
+	pending, ok := h.pendingGenerations[userID]
+	if !ok {
+		// Jika tidak ada data, batalkan
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Request(deleteMsg)
 		return
 	}
 
-	h.triggerImageGeneration(user, message, modelID, prompt, imageURL)
+	switch action {
+	case "generate_now":
+		delete(h.pendingGenerations, userID) // Hapus data sementara
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Request(deleteMsg)
+		h.triggerImageGeneration(user, callback.Message, pending.ModelID, pending.Prompt, pending.ImageURL)
+	
+	case "show_styles":
+		text := "Silakan pilih gaya visual yang Anda inginkan:"
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+		keyboard := h.createStyleSelectionKeyboard(h.Styles, lang)
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+
+	case "back_to_confirm":
+		text := "<b>Prompt diterima!</b> ✅\n\nPilih gaya di bawah untuk menyempurnakan gambarmu, atau langsung mulai proses generasi."
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+		msg.ParseMode = "HTML"
+		keyboard := h.createStyleConfirmationKeyboard(lang)
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+	}
 }
 
+func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID string) {
+	userID := callback.From.ID
+	h.userStatesMutex.Lock()
+	state, ok := h.userStates[userID]
+	if !ok || !strings.HasPrefix(state, "awaiting_style_for:") {
+		h.userStatesMutex.Unlock()
+		return
+	}
+	modelID := strings.TrimPrefix(state, "awaiting_style_for:")
+	
+	h.userStates[userID] = fmt.Sprintf("prompt_for:%s:%s", modelID, styleID)
+	h.userStatesMutex.Unlock()
+
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	var selectedModel *config.Model
+	for _, m := range h.Models {
+		if m.ID == modelID {
+			selectedModel = &m
+			break
+		}
+	}
+	if selectedModel == nil { return }
+	
+	var styleName string
+	for _, style := range h.Styles {
+		if style.ID == styleID {
+			styleName = style.Name
+			break
+		}
+	}
+
+	promptRequestArgs := map[string]string{
+		"style_name": styleName,
+	}
+	mainText := h.Localizer.Getf(lang, "style_select_prompt", promptRequestArgs)
+
+	if selectedModel.Description != "" {
+		mainText += fmt.Sprintf("\n\n<blockquote expandable>%s</blockquote>", selectedModel.Description)
+	}
+	
+	var warningText string
+	if user.NumOutputs > 1 && !selectedModel.ConfigurableNumOutputs {
+		warningText = h.Localizer.Get(lang, "single_output_warning")
+	}
+
+	fullText := warningText + mainText
+
+	if user.NumOutputs > 1 && selectedModel.ConfigurableNumOutputs {
+		totalCost := selectedModel.Cost * user.NumOutputs
+		warningArgs := map[string]string{
+			"num_images": strconv.Itoa(user.NumOutputs),
+			"total_cost": strconv.Itoa(totalCost),
+		}
+		costWarning := h.Localizer.Getf(lang, "multiple_images_warning", warningArgs)
+		fullText += costWarning
+	}
+
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fullText)
+	msg.ParseMode = "HTML"
+
+	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+	if selectedModel.Parameters != nil && len(selectedModel.Parameters) > 0 {
+		advButton := tgbotapi.NewInlineKeyboardButtonData("⚙️ Advanced Settings", "adv_setting_open:"+modelID)
+		keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(advButton))
+	}
+	cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
+	
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
+	msg.ReplyMarkup = &keyboard
+	
+	h.Bot.Send(msg)
+	
+	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+	h.Bot.Send(deleteMsg)
+}
 
 func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *tgbotapi.Message, modelID, prompt string, imageURL ...string) {
 	h.userStatesMutex.Lock()
@@ -845,18 +1102,36 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 
 	var aspectRatio string
 	var numOutputs int
+	var customParams map[string]interface{}
 
 	if selectedModel.ConfigurableAspectRatio {
 		aspectRatio = user.AspectRatio
 	}
+
 	if selectedModel.ConfigurableNumOutputs {
 		numOutputs = user.NumOutputs
 	} else {
 		numOutputs = 1
 	}
 
+	if user.CustomSettings != "" {
+		json.Unmarshal([]byte(user.CustomSettings), &customParams)
+	}
+
+	if val, ok := customParams["num_outputs"]; ok {
+		if num, ok := val.(float64); ok {
+			numOutputs = int(num)
+		} else if num, ok := val.(int64); ok {
+			numOutputs = int(num)
+		}
+	}
+	
+	if numOutputs == 0 {
+		numOutputs = 1
+	}
+
 	totalCost := selectedModel.Cost * numOutputs
-	// --- MULAI PERUBAHAN LOGIKA KREDIT ---
+	
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
 	if totalAvailableCredits < totalCost {
 		insufficientArgs := map[string]string{
@@ -867,7 +1142,6 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		h.Bot.Send(msg)
 		return
 	}
-	// --- SELESAI PERUBAHAN LOGIKA KREDIT ---
 
 	waitMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generating"))
 	sentMsg, _ := h.Bot.Send(waitMsg)
@@ -880,14 +1154,17 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	if len(imageURL) > 0 {
 		finalImageURL = imageURL[0]
 	}
-	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, aspectRatio, numOutputs)
+
+	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams)
 
 	if err != nil || len(imageUrls) == 0 {
-        // --- BARIS YANG DIPERBARUI ---
 		failMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed"))
-        // --- SELESAI ---
 		h.Bot.Send(failMsg)
 		return
+	}
+
+	if user.CustomSettings != "" {
+		user.CustomSettings = ""
 	}
 
 	h.lastGeneratedURLsMutex.Lock()
@@ -908,23 +1185,16 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		user.PaidCredits -= costLeft
 	}
 
-	// 2. Tambah jumlah gambar yang sudah dibuat
 	user.GeneratedImageCount++
-
-	// 3. Simpan perubahan data pengguna saat ini ke database SEGERA
 	h.DB.UpdateUser(user)
 
-	// 4. SEKARANG, baru kita cek apakah syarat referral terpenuhi
 	if user.GeneratedImageCount == 2 && user.ReferrerID != 0 {
-		// Dapatkan data terbaru dari si pengundang
 		referrer, err := h.DB.GetUserByTelegramID(user.ReferrerID)
 		if err == nil && referrer != nil {
 			referrer.PaidCredits += 5
-			errUpdate := h.DB.UpdateUser(referrer) // Simpan bonus ke pengundang
+			errUpdate := h.DB.UpdateUser(referrer)
 			if errUpdate == nil {
 				log.Printf("INFO: Awarded 5 referral credits to user %d", referrer.TelegramID)
-
-				// Kirim notifikasi ke pengundang
 				referrerLang := referrer.LanguageCode
 				notificationText := h.Localizer.Get(referrerLang, "referral_bonus_notification")
 				msg := tgbotapi.NewMessage(referrer.TelegramID, notificationText)
@@ -933,15 +1203,12 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 			}
 		}
 	}
-	// --- SELESAI LOGIKA BARU ---	
 
 	safePrompt := html.EscapeString(prompt)
-	if len(safePrompt) > 900 { // Batas aman untuk prompt
+	if len(safePrompt) > 900 {
 		safePrompt = safePrompt[:900] + "..."
 	}
 	caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💵", safePrompt, selectedModel.Name, totalCost)
-	// --- Selesai ---
-	
 
 	if len(imageUrls) == 1 {
 		msg := h.newReplyPhoto(originalMessage, tgbotapi.FileURL(imageUrls[0]))
@@ -961,15 +1228,16 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		msg := h.newReplyMediaGroup(originalMessage, media)
 		h.Bot.Send(msg)
 	}
+
 	rawPromptText := h.Localizer.Get(lang, "raw_file_prompt")
 	rawButtonText := h.Localizer.Get(lang, "raw_download_button")
-	
+
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(rawButtonText, "download_raw"),
 		),
 	)
-	
+
 	rawMsg := tgbotapi.NewMessage(originalMessage.Chat.ID, rawPromptText)
 	rawMsg.ReplyMarkup = &keyboard
 	h.Bot.Send(rawMsg)
@@ -1449,4 +1717,242 @@ func (h *Handler) handleBroadcastGroup(message *tgbotapi.Message) {
 		finishMsg := tgbotapi.NewMessage(adminChatID, h.Localizer.Getf(lang, finishMsgText, finishArgs))
 		h.Bot.Send(finishMsg)
 	}(message.Chat.ID)
+}
+
+func (h *Handler) handleOpenAdvancedSettings(callback *tgbotapi.CallbackQuery, modelID string) {
+	user, err := h.getOrCreateUser(callback.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	var selectedModel *config.Model
+	for _, m := range h.Models {
+		if m.ID == modelID {
+			selectedModel = &m
+			break
+		}
+	}
+	if selectedModel == nil {
+		return
+	}
+
+	keyboard, text := h.createAdvancedSettingsKeyboard(lang, selectedModel, user)
+	
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) handleSelectAdvancedSetting(callback *tgbotapi.CallbackQuery, modelID, paramName string) {
+	user, err := h.getOrCreateUser(callback.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	var selectedParam *config.Parameter
+	// Langsung cari parameter yang relevan tanpa menyimpan modelnya
+	found := false
+	for _, m := range h.Models {
+		if m.ID == modelID {
+			for _, p := range m.Parameters {
+				if p.Name == paramName {
+					selectedParam = &p
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if selectedParam == nil {
+		log.Printf("WARN: Parameter %s for model %s not found", paramName, modelID)
+		return
+	}
+
+	// Jika parameter punya daftar 'options', tampilkan sebagai tombol
+	if len(selectedParam.Options) > 0 {
+		var keyboardRows [][]tgbotapi.InlineKeyboardButton
+		var currentRow []tgbotapi.InlineKeyboardButton
+
+		for _, option := range selectedParam.Options {
+			callbackData := fmt.Sprintf("adv_set_option:%s:%s:%s", modelID, paramName, option)
+			button := tgbotapi.NewInlineKeyboardButtonData(option, callbackData)
+			currentRow = append(currentRow, button)
+
+			if len(currentRow) == 2 {
+				keyboardRows = append(keyboardRows, currentRow)
+				currentRow = []tgbotapi.InlineKeyboardButton{}
+			}
+		}
+		if len(currentRow) > 0 {
+			keyboardRows = append(keyboardRows, currentRow)
+		}
+
+		backCallback := fmt.Sprintf("adv_setting_open:%s", modelID)
+		backButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), backCallback)
+		keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(backButton))
+		
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
+		
+		msgText := fmt.Sprintf("Select a value for <b>%s</b>:", selectedParam.Label)
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, msgText)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+
+	} else { // Jika tidak ada 'options', minta input teks seperti biasa
+		h.userStatesMutex.Lock()
+		h.userStates[user.TelegramID] = fmt.Sprintf("edit_setting:%s:%s", modelID, paramName)
+		h.userStatesMutex.Unlock()
+
+		var promptText strings.Builder
+		promptText.WriteString(fmt.Sprintf("Please enter a new value for <b>%s</b>.", selectedParam.Label))
+		if selectedParam.Description != "" {
+			promptText.WriteString(fmt.Sprintf("\n\n<i>%s</i>", selectedParam.Description))
+		}
+		
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, promptText.String())
+		msg.ParseMode = "HTML"
+		
+		cancelKeyboard := h.createCancelFlowKeyboard(lang)
+		msg.ReplyMarkup = &cancelKeyboard
+		
+		h.Bot.Send(msg)
+	}
+}
+
+func (h *Handler) handleSetOption(callback *tgbotapi.CallbackQuery, modelID, paramName, optionValue string) {
+	user, _ := h.getOrCreateUser(callback.From)
+
+	var customSettings map[string]interface{}
+	if user.CustomSettings != "" {
+		json.Unmarshal([]byte(user.CustomSettings), &customSettings)
+	} else {
+		customSettings = make(map[string]interface{})
+	}
+
+	// Langsung cari parameter yang relevan tanpa menyimpan model secara terpisah
+	var targetParamType string
+	found := false
+	for _, model := range h.Models {
+		if model.ID == modelID {
+			for _, param := range model.Parameters {
+				if param.Name == paramName {
+					targetParamType = param.Type
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		log.Printf("WARN: Parameter %s for model %s not found in handleSetOption", paramName, modelID)
+		return
+	}
+	
+	// Konversi nilai berdasarkan tipe data yang ditemukan
+	var parsedValue interface{}
+	switch targetParamType {
+	case "integer":
+		parsedValue, _ = strconv.ParseInt(optionValue, 10, 64)
+	case "number":
+		parsedValue, _ = strconv.ParseFloat(optionValue, 64)
+	default: // string
+		parsedValue = optionValue
+	}
+
+	customSettings[paramName] = parsedValue
+	settingsJSON, _ := json.Marshal(customSettings)
+	user.CustomSettings = string(settingsJSON)
+	h.DB.UpdateUser(user)
+
+	// Panggil kembali menu advanced settings
+	h.handleOpenAdvancedSettings(callback, modelID)
+}
+
+// showPromptEntryScreen is a helper function to display the prompt entry message.
+// This avoids code duplication between handleStyleSelection and the 'back' action.
+func (h *Handler) showPromptEntryScreen(callback *tgbotapi.CallbackQuery, modelID string, styleID string, isEdit bool) {
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	var selectedModel *config.Model
+	for _, m := range h.Models {
+		if m.ID == modelID {
+			selectedModel = &m
+			break
+		}
+	}
+	if selectedModel == nil {
+		return
+	}
+
+	var styleName string
+	for _, style := range h.Styles {
+		if style.ID == styleID {
+			styleName = style.Name
+			break
+		}
+	}
+
+	promptRequestArgs := map[string]string{
+		"style_name": styleName,
+	}
+	mainText := h.Localizer.Getf(lang, "style_select_prompt", promptRequestArgs)
+
+	if selectedModel.Description != "" {
+		mainText += fmt.Sprintf("\n\n<blockquote expandable>%s</blockquote>", selectedModel.Description)
+	}
+
+	var warningText string
+	if user.NumOutputs > 1 && !selectedModel.ConfigurableNumOutputs {
+		warningText = h.Localizer.Get(lang, "single_output_warning")
+	}
+
+	fullText := warningText + mainText
+
+	if user.NumOutputs > 1 && selectedModel.ConfigurableNumOutputs {
+		totalCost := selectedModel.Cost * user.NumOutputs
+		warningArgs := map[string]string{
+			"num_images": strconv.Itoa(user.NumOutputs),
+			"total_cost": strconv.Itoa(totalCost),
+		}
+		costWarning := h.Localizer.Getf(lang, "multiple_images_warning", warningArgs)
+		fullText += costWarning
+	}
+
+	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+	if selectedModel.Parameters != nil && len(selectedModel.Parameters) > 0 {
+		advButton := tgbotapi.NewInlineKeyboardButtonData("⚙️ Advanced Settings", "adv_setting_open:"+modelID)
+		keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(advButton))
+	}
+	cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
+
+	if isEdit {
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, fullText)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+	} else {
+		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fullText)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+		
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Send(deleteMsg)
+	}
 }

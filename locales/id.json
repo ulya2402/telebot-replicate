@@ -75,5 +75,8 @@
   "force_subscribe_button": "🔑 Gabung Channel",
   "button_topup_contextual": "💰 Mau Isi Ulang Kredit?",
   "single_output_warning": "<b>Info:</b> Model ini hanya bisa membuat 1 gambar. Setelan jumlah gambarmu akan diabaikan untuk sementara.\n\n",
-  "enter_prompt_without_image_option": "Sekarang, ketik idemu di sini."
+  "enter_prompt_without_image_option": "Sekarang, ketik idemu di sini.",
+  "style_flow_title": "<b>Model dipilih!</b> ✅\n\nSekarang, silakan pilih gaya visual untuk generasimu, atau lewati jika tidak perlu.",
+  "style_select_prompt": "<b>Gaya: {style_name}</b>\n\nSekarang, silakan masukkan prompt Anda.",
+  "style_skip_button": "➡️ Lewati (Tanpa Gaya)"
 }
