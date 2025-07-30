@@ -302,7 +302,25 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Ideogram V3 Balanced is an AI model that strikes the perfect balance between speed, quality, and cost. It generates images with stunning realism, creative design, and consistent visual style. Great for anyone looking for professional-grade results without compromising on efficiency. Aspect ratio is adjustable, but output count is fixed."
+      "description":"Ideogram V3 Balanced is an AI model that strikes the perfect balance between speed, quality, and cost. It generates images with stunning realism, creative design, and consistent visual style. Great for anyone looking for professional-grade results without compromising on efficiency. Aspect ratio is adjustable, but output count is fixed.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Leave empty for random. Use a number for consistent results.",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
     },
     {
       "id": "imagen-4-ultra",
@@ -328,7 +346,33 @@
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
-      "description":"Flux Kontext Max is a premium text-based image editing model built for maximum performance. It offers major improvements in typography generation and transforms images through natural language prompts. You can upload image inputs, adjust the aspect ratio, and choose the number of outputs — perfect for high-end design work and creative storytelling."
+      "description":"Flux Kontext Max is a premium text-based image editing model built for maximum performance. It offers major improvements in typography generation and transforms images through natural language prompts. You can upload image inputs, adjust the aspect ratio, and choose the number of outputs — perfect for high-end design work and creative storytelling.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "safety_tolerance",
+          "label": "Safety Tolerance",
+          "type": "integer",
+          "default": "2",
+          "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
     },
     {
       "id": "recraft-v3-svg",
@@ -389,6 +433,66 @@
       "accepts_image_input": false,
       "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
-      "show_templates": false
+      "show_templates": false,
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "safety_tolerance",
+          "label": "Safety Tolerance",
+          "type": "integer",
+          "default": "2",
+          "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": "80",
+          "description": "Number of outputs to generate.",
+          "options": ["40", "60", "70", "80", "90", "100"]
+        }
+      ]
+    },
+    {
+      "id": "remove-background",
+      "name": "Remove Background",
+      "replicate_id": "bria/remove-background",
+      "tier": "basic",
+      "cost": 2,
+      "enabled": true,
+      "accepts_image_input": true,
+      "image_parameter_name": "image",
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "Remove the background from an image. Upload a photo to get started.",
+      "parameters": [
+        {
+          "name": "content_moderation",
+          "type": "boolean",
+          "default": false
+        },
+        {
+            "name": "preserve_partial_alpha",
+            "type": "boolean",
+            "default": true
+        }
+      ]
     }
   ]

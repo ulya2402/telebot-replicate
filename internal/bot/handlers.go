@@ -236,6 +236,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleSettings(message)
 	case "topup":
 		h.PaymentHandler.ShowTopUpOptions(message.Chat.ID)
+	case "removebg":
+		h.handleRemoveBg(message)
 	default:
 		msg := h.newReplyMessage(message, "Unknown command")
 		h.Bot.Send(msg)
@@ -564,7 +566,8 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "main_menu_generate":
 		// Panggil logika /img, tapi sebagai callback
 		h.handleImageCommand(dummyMessage)
-	
+	case "main_menu_removebg":
+		h.handleRemoveBg(dummyMessage)
 	case "main_menu_settings":
 		h.handleSettings(dummyMessage)
 	
@@ -624,6 +627,53 @@ func (h *Handler) showProviderSelection(callback *tgbotapi.CallbackQuery) {
 	keyboard := h.createProviderSelectionKeyboard(h.Providers, lang)
 	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
 	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+func (h *Handler) handleRemoveBg(message *tgbotapi.Message) {
+	user, err := h.getOrCreateUser(message.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	var removeBgModel *config.Model
+	for _, m := range h.Models {
+		if m.ID == "remove-background" {
+			removeBgModel = &m
+			break
+		}
+	}
+
+	if removeBgModel == nil {
+		log.Println("ERROR: 'remove-background' model not found in models.json")
+		return
+	}
+
+	totalAvailableCredits := user.PaidCredits + user.FreeCredits
+	if totalAvailableCredits < removeBgModel.Cost {
+		args := map[string]string{
+			"required": strconv.Itoa(removeBgModel.Cost),
+			"balance":  strconv.Itoa(totalAvailableCredits),
+		}
+		text := h.Localizer.Getf(lang, "insufficient_credits", args)
+		msg := h.newReplyMessage(message, text)
+		h.Bot.Send(msg)
+		return
+	}
+
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_image_for_removebg"
+	h.userStatesMutex.Unlock()
+
+	args := map[string]string{
+		"cost": strconv.Itoa(removeBgModel.Cost),
+	}
+	text := h.Localizer.Getf(lang, "removebg_prompt", args)
+
+	msg := h.newReplyMessage(message, text)
+	keyboard := h.createCancelFlowKeyboard(lang)
 	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
 }
@@ -822,6 +872,22 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 
 	user, _ := h.getOrCreateUser(message.From)
 	lang := user.LanguageCode
+
+	if state == "awaiting_image_for_removebg" {
+		if message.Photo == nil || len(message.Photo) == 0 {
+			return
+		}
+
+		bestPhoto := message.Photo[len(message.Photo)-1]
+		imageURL, err := h.getFileURL(bestPhoto.FileID)
+		if err != nil {
+			log.Printf("ERROR: Failed to get file URL for removebg: %v", err)
+			return
+		}
+		h.triggerImageGeneration(user, message, "remove-background", "", imageURL)
+		return
+	}
+
 
 	if strings.HasPrefix(state, "prompt_for:") {
 		// Format state baru: "prompt_for:model_id:style_id"
@@ -1118,6 +1184,10 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		json.Unmarshal([]byte(user.CustomSettings), &customParams)
 	}
 
+	if modelID == "remove-background" {
+		delete(customParams, "num_outputs")
+	}
+
 	if val, ok := customParams["num_outputs"]; ok {
 		if num, ok := val.(float64); ok {
 			numOutputs = int(num)
@@ -1146,6 +1216,9 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	waitMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generating"))
 	sentMsg, _ := h.Bot.Send(waitMsg)
 	defer h.Bot.Send(tgbotapi.NewDeleteMessage(originalMessage.Chat.ID, sentMsg.MessageID))
+
+	action := tgbotapi.NewChatAction(originalMessage.Chat.ID, tgbotapi.ChatUploadPhoto)
+	h.Bot.Send(action)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -1209,6 +1282,36 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		safePrompt = safePrompt[:900] + "..."
 	}
 	caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💵", safePrompt, selectedModel.Name, totalCost)
+
+	if modelID == "remove-background" {
+		if len(imageUrls) > 0 {
+			resp, err := http.Get(imageUrls[0])
+			if err != nil {
+				log.Printf("ERROR: Failed to download removebg file: %v", err)
+				h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
+				return
+			}
+			defer resp.Body.Close()
+
+			bytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("ERROR: Failed to read removebg file bytes: %v", err)
+				h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
+				return
+			}
+
+			fileBytes := tgbotapi.FileBytes{
+				Name:  "background-removed.png",
+				Bytes: bytes,
+			}
+
+			doc := h.newReplyDocument(originalMessage, fileBytes)
+			doc.Caption = h.Localizer.Get(lang, "removebg_success")
+			h.Bot.Send(doc)
+
+		}
+		return // Hentikan fungsi setelah mengirim hasil removebg
+	}
 
 	if len(imageUrls) == 1 {
 		msg := h.newReplyPhoto(originalMessage, tgbotapi.FileURL(imageUrls[0]))
@@ -1512,6 +1615,10 @@ func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
 func (h *Handler) handleRawDownload(callback *tgbotapi.CallbackQuery) {
 	userID := callback.From.ID
 	lang := h.getUserLang(userID)
+
+	h.Bot.Request(tgbotapi.NewCallback(callback.ID, ""))
+	action := tgbotapi.NewChatAction(callback.Message.Chat.ID, tgbotapi.ChatUploadDocument)
+	h.Bot.Send(action)
 
 	h.lastGeneratedURLsMutex.Lock()
 	urls, ok := h.lastGeneratedURLs[userID]

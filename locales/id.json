@@ -78,5 +78,9 @@
   "enter_prompt_without_image_option": "Sekarang, ketik idemu di sini.",
   "style_flow_title": "<b>Model dipilih!</b> ✅\n\nSekarang, silakan pilih gaya visual untuk generasimu, atau lewati jika tidak perlu.",
   "style_select_prompt": "<b>Gaya: {style_name}</b>\n\nSekarang, silakan masukkan prompt Anda.",
-  "style_skip_button": "➡️ Lewati (Tanpa Gaya)"
+  "style_skip_button": "➡️ Lewati (Tanpa Gaya)",
+  "removebg_prompt": "Silakan kirim foto yang ingin kamu hapus latar belakangnya. Biayanya {cost} 💵.",
+  "button_removebg": "🖼️ Hapus Latar",
+  "removebg_success": "✅ Ini dia gambarmu yang latar belakangnya sudah dihapus.",
+  "raw_files_sending": "⏳ Mengirim file..."
 }

@@ -78,5 +78,9 @@
   "enter_prompt_without_image_option": "Please enter your prompt.",
   "style_flow_title": "<b>Model selected!</b> ✅\n\nNow, please select a visual style for your generation, or skip if you don't need one.",
   "style_select_prompt": "<b>Style: {style_name}</b>\n\nPlease enter your prompt now.",
-  "style_skip_button": "➡️ Skip (No Style)"
+  "style_skip_button": "➡️ Skip (No Style)",
+  "button_removebg": "🖼️ Remove Background",
+"removebg_prompt": "Please send the photo you want to remove the background from. This will cost {cost} 💵.",
+  "removebg_success": "✅ Here is your image with the background removed.",
+  "raw_files_sending": "⏳ Sending files..."
   }
