@@ -238,6 +238,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.PaymentHandler.ShowTopUpOptions(message.Chat.ID)
 	case "removebg":
 		h.handleRemoveBg(message)
+	case "upscaler":
+		h.handleUpscaler(message)
 	default:
 		msg := h.newReplyMessage(message, "Unknown command")
 		h.Bot.Send(msg)
@@ -306,8 +308,21 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 
 func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	lang := "en"
-	broadcastText := message.CommandArguments()
-	if broadcastText == "" {
+	// --- PERUBAHAN DI SINI (1/4): Variabel untuk menyimpan ID foto ---
+	var broadcastText, photoFileID string
+
+	broadcastText = message.CommandArguments()
+
+	// --- PERUBAHAN DI SINI (2/4): Logika untuk mendeteksi foto ---
+	if message.Photo != nil && len(message.Photo) > 0 {
+		photoFileID = message.Photo[len(message.Photo)-1].FileID
+	} else if message.ReplyToMessage != nil && message.ReplyToMessage.Photo != nil && len(message.ReplyToMessage.Photo) > 0 {
+		photoFileID = message.ReplyToMessage.Photo[len(message.ReplyToMessage.Photo)-1].FileID
+	}
+
+	// --- PERUBAHAN DI SINI (3/4): Validasi pesan atau foto harus ada ---
+	if broadcastText == "" && photoFileID == "" {
+		// Menggunakan teks dari `broadcast_usage` yang sudah ada
 		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "broadcast_usage"))
 		h.Bot.Send(msg)
 		return
@@ -323,22 +338,30 @@ func (h *Handler) handleBroadcast(message *tgbotapi.Message) {
 	startMsg := h.newReplyMessage(message, h.Localizer.Getf(lang, "broadcast_started", args))
 	h.Bot.Send(startMsg)
 
-	// Jalankan broadcast di goroutine agar tidak memblokir bot
 	go func(adminChatID int64) {
 		sentCount := 0
 		for _, user := range allUsers {
-			msg := tgbotapi.NewMessage(user.TelegramID, broadcastText)
-			msg.ParseMode = "HTML" 
-			_, err := h.Bot.Send(msg)
+			var err error
+			// --- PERUBAHAN DI SINI (4/4): Logika pengiriman pesan dengan gambar ---
+			if photoFileID != "" {
+				photoMsg := tgbotapi.NewPhoto(user.TelegramID, tgbotapi.FileID(photoFileID))
+				photoMsg.Caption = broadcastText
+				photoMsg.ParseMode = "HTML"
+				_, err = h.Bot.Send(photoMsg)
+			} else {
+				textMsg := tgbotapi.NewMessage(user.TelegramID, broadcastText)
+				textMsg.ParseMode = "HTML"
+				_, err = h.Bot.Send(textMsg)
+			}
+
 			if err == nil {
 				sentCount++
 			}
-			// Rate limiting: tunggu sebentar antar pesan untuk menghindari blokir Telegram
 			time.Sleep(100 * time.Millisecond)
 		}
-		
+
 		finishArgs := map[string]string{
-			"sent_count":   strconv.Itoa(sentCount),
+			"sent_count":  strconv.Itoa(sentCount),
 			"total_count": strconv.Itoa(len(allUsers)),
 		}
 		finishMsg := tgbotapi.NewMessage(adminChatID, h.Localizer.Getf(lang, "broadcast_finished", finishArgs))
@@ -610,7 +633,8 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "style_select":
 		h.handleStyleSelection(callback, data)
 		return // Return agar tidak dilanjutkan ke switch di bawah
-
+	case "main_menu_upscaler":
+		h.handleUpscaler(dummyMessage)
 	}
 }
 
@@ -888,6 +912,22 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
+	if state == "awaiting_image_for_upscaler" {
+		if message.Photo == nil || len(message.Photo) == 0 {
+			return
+		}
+
+		bestPhoto := message.Photo[len(message.Photo)-1]
+		imageURL, err := h.getFileURL(bestPhoto.FileID)
+		if err != nil {
+			log.Printf("ERROR: Failed to get file URL for upscaler: %v", err)
+			return
+		}
+
+		h.triggerImageGeneration(user, message, "recraft-upscaler", "", imageURL)
+		return
+	}
+
 
 	if strings.HasPrefix(state, "prompt_for:") {
 		// Format state baru: "prompt_for:model_id:style_id"
@@ -1148,7 +1188,9 @@ func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID
 	h.Bot.Send(deleteMsg)
 }
 
-func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *tgbotapi.Message, modelID, prompt string, imageURL ...string) {
+// File: internal/bot/handlers.go
+
+func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *tgbotapi.Message, modelID, prompt string, imageURLAndParams ...interface{}) {
 	h.userStatesMutex.Lock()
 	delete(h.userStates, user.TelegramID)
 	h.userStatesMutex.Unlock()
@@ -1163,28 +1205,46 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		}
 	}
 	if selectedModel == nil {
+		log.Printf("ERROR: Model with ID '%s' not found.", modelID)
 		return
 	}
 
-	var aspectRatio string
-	var numOutputs int
+	var finalImageURL string
 	var customParams map[string]interface{}
 
+	if len(imageURLAndParams) > 0 {
+		if url, ok := imageURLAndParams[0].(string); ok {
+			finalImageURL = url
+		}
+	}
+	if len(imageURLAndParams) > 1 {
+		if params, ok := imageURLAndParams[1].(map[string]interface{}); ok {
+			customParams = params
+		}
+	}
+
+	if customParams == nil {
+		if user.CustomSettings != "" {
+			json.Unmarshal([]byte(user.CustomSettings), &customParams)
+		} else {
+			customParams = make(map[string]interface{})
+		}
+	}
+
+	var aspectRatio string
 	if selectedModel.ConfigurableAspectRatio {
 		aspectRatio = user.AspectRatio
 	}
 
+	var numOutputs int
 	if selectedModel.ConfigurableNumOutputs {
 		numOutputs = user.NumOutputs
 	} else {
 		numOutputs = 1
 	}
 
-	if user.CustomSettings != "" {
-		json.Unmarshal([]byte(user.CustomSettings), &customParams)
-	}
-
-	if modelID == "remove-background" {
+	if modelID == "remove-background" || modelID == "recraft-upscaler" {
+		numOutputs = 1
 		delete(customParams, "num_outputs")
 	}
 
@@ -1195,14 +1255,13 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 			numOutputs = int(num)
 		}
 	}
-	
 	if numOutputs == 0 {
 		numOutputs = 1
 	}
 
 	totalCost := selectedModel.Cost * numOutputs
-	
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
+
 	if totalAvailableCredits < totalCost {
 		insufficientArgs := map[string]string{
 			"required": strconv.Itoa(totalCost),
@@ -1223,11 +1282,6 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	var finalImageURL string
-	if len(imageURL) > 0 {
-		finalImageURL = imageURL[0]
-	}
-
 	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams)
 
 	if err != nil || len(imageUrls) == 0 {
@@ -1235,14 +1289,6 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		h.Bot.Send(failMsg)
 		return
 	}
-
-	if user.CustomSettings != "" {
-		user.CustomSettings = ""
-	}
-
-	h.lastGeneratedURLsMutex.Lock()
-	h.lastGeneratedURLs[user.TelegramID] = imageUrls
-	h.lastGeneratedURLsMutex.Unlock()
 
 	costLeft := totalCost
 	if user.FreeCredits > 0 {
@@ -1261,15 +1307,17 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	user.GeneratedImageCount++
 	h.DB.UpdateUser(user)
 
+	if user.CustomSettings != "" {
+		user.CustomSettings = ""
+	}
+
 	if user.GeneratedImageCount == 2 && user.ReferrerID != 0 {
-		referrer, err := h.DB.GetUserByTelegramID(user.ReferrerID)
-		if err == nil && referrer != nil {
+		referrer, errRef := h.DB.GetUserByTelegramID(user.ReferrerID)
+		if errRef == nil && referrer != nil {
 			referrer.PaidCredits += 5
-			errUpdate := h.DB.UpdateUser(referrer)
-			if errUpdate == nil {
-				log.Printf("INFO: Awarded 5 referral credits to user %d", referrer.TelegramID)
-				referrerLang := referrer.LanguageCode
-				notificationText := h.Localizer.Get(referrerLang, "referral_bonus_notification")
+			if errUpdate := h.DB.UpdateUser(referrer); errUpdate == nil {
+				log.Printf("INFO: Awarded referral bonus to user %d", referrer.TelegramID)
+				notificationText := h.Localizer.Get(referrer.LanguageCode, "referral_bonus_notification")
 				msg := tgbotapi.NewMessage(referrer.TelegramID, notificationText)
 				msg.ParseMode = "Markdown"
 				h.Bot.Send(msg)
@@ -1277,73 +1325,124 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		}
 	}
 
-	safePrompt := html.EscapeString(prompt)
-	if len(safePrompt) > 900 {
-		safePrompt = safePrompt[:900] + "..."
-	}
-	caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💵", safePrompt, selectedModel.Name, totalCost)
-
-	if modelID == "remove-background" {
-		if len(imageUrls) > 0 {
-			resp, err := http.Get(imageUrls[0])
-			if err != nil {
-				log.Printf("ERROR: Failed to download removebg file: %v", err)
-				h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
-				return
-			}
-			defer resp.Body.Close()
-
-			bytes, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Printf("ERROR: Failed to read removebg file bytes: %v", err)
-				h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
-				return
-			}
-
-			fileBytes := tgbotapi.FileBytes{
-				Name:  "background-removed.png",
-				Bytes: bytes,
-			}
-
-			doc := h.newReplyDocument(originalMessage, fileBytes)
-			doc.Caption = h.Localizer.Get(lang, "removebg_success")
-			h.Bot.Send(doc)
-
+	if modelID == "remove-background" || modelID == "recraft-upscaler" {
+		resp, httpErr := http.Get(imageUrls[0])
+		if httpErr != nil {
+			log.Printf("ERROR: Failed to download processed file: %v", httpErr)
+			h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
+			return
 		}
-		return // Hentikan fungsi setelah mengirim hasil removebg
-	}
+		defer resp.Body.Close()
 
-	if len(imageUrls) == 1 {
-		msg := h.newReplyPhoto(originalMessage, tgbotapi.FileURL(imageUrls[0]))
-		msg.Caption = caption
-		msg.ParseMode = "HTML"
-		h.Bot.Send(msg)
+		bytes, readErr := ioutil.ReadAll(resp.Body)
+		if readErr != nil {
+			log.Printf("ERROR: Failed to read processed file bytes: %v", readErr)
+			h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed")))
+			return
+		}
+
+		var fileName, successMessage string
+		if modelID == "remove-background" {
+			fileName = "background-removed.png"
+			successMessage = h.Localizer.Get(lang, "removebg_success")
+		} else {
+			fileName = "upscaled-image.jpg"
+			successMessage = h.Localizer.Get(lang, "upscaler_success")
+		}
+
+		fileBytes := tgbotapi.FileBytes{Name: fileName, Bytes: bytes}
+		doc := h.newReplyDocument(originalMessage, fileBytes)
+		doc.Caption = successMessage
+		h.Bot.Send(doc)
 	} else {
-		var media []interface{}
-		for i, url := range imageUrls {
-			photo := tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(url))
-			if i == 0 {
-				photo.Caption = caption
-				photo.ParseMode = "HTML"
-			}
-			media = append(media, photo)
+		safePrompt := html.EscapeString(prompt)
+		if len(safePrompt) > 900 {
+			safePrompt = safePrompt[:900] + "..."
 		}
-		msg := h.newReplyMediaGroup(originalMessage, media)
-		h.Bot.Send(msg)
+		caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💵", safePrompt, selectedModel.Name, totalCost)
+
+		if len(imageUrls) == 1 {
+			msg := h.newReplyPhoto(originalMessage, tgbotapi.FileURL(imageUrls[0]))
+			msg.Caption = caption
+			msg.ParseMode = "HTML"
+			h.Bot.Send(msg)
+		} else {
+			var media []interface{}
+			for i, url := range imageUrls {
+				photo := tgbotapi.NewInputMediaPhoto(tgbotapi.FileURL(url))
+				if i == 0 {
+					photo.Caption = caption
+					photo.ParseMode = "HTML"
+				}
+				media = append(media, photo)
+			}
+			msg := h.newReplyMediaGroup(originalMessage, media)
+			h.Bot.Send(msg)
+		}
+
+		h.lastGeneratedURLsMutex.Lock()
+		h.lastGeneratedURLs[user.TelegramID] = imageUrls
+		h.lastGeneratedURLsMutex.Unlock()
+
+		rawPromptText := h.Localizer.Get(lang, "raw_file_prompt")
+		rawButtonText := h.Localizer.Get(lang, "raw_download_button")
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(rawButtonText, "download_raw"),
+			),
+		)
+		rawMsg := tgbotapi.NewMessage(originalMessage.Chat.ID, rawPromptText)
+		rawMsg.ReplyMarkup = &keyboard
+		h.Bot.Send(rawMsg)
+	}
+}
+
+func (h *Handler) handleUpscaler(message *tgbotapi.Message) {
+	user, err := h.getOrCreateUser(message.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	var upscalerModel *config.Model
+	for _, m := range h.Models {
+        // --- PERUBAHAN DI SINI: Cari ID model baru ---
+		if m.ID == "recraft-upscaler" {
+			upscalerModel = &m
+			break
+		}
 	}
 
-	rawPromptText := h.Localizer.Get(lang, "raw_file_prompt")
-	rawButtonText := h.Localizer.Get(lang, "raw_download_button")
+	if upscalerModel == nil {
+		log.Println("ERROR: 'recraft-upscaler' model not found in models.json")
+		return
+	}
 
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(rawButtonText, "download_raw"),
-		),
-	)
+	totalAvailableCredits := user.PaidCredits + user.FreeCredits
+	if totalAvailableCredits < upscalerModel.Cost {
+		args := map[string]string{
+			"required": strconv.Itoa(upscalerModel.Cost),
+			"balance":  strconv.Itoa(totalAvailableCredits),
+		}
+		text := h.Localizer.Getf(lang, "insufficient_credits", args)
+		msg := h.newReplyMessage(message, text)
+		h.Bot.Send(msg)
+		return
+	}
 
-	rawMsg := tgbotapi.NewMessage(originalMessage.Chat.ID, rawPromptText)
-	rawMsg.ReplyMarkup = &keyboard
-	h.Bot.Send(rawMsg)
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_image_for_upscaler"
+	h.userStatesMutex.Unlock()
+
+	args := map[string]string{
+		"cost": strconv.Itoa(upscalerModel.Cost),
+	}
+	text := h.Localizer.Getf(lang, "upscaler_prompt", args)
+
+	msg := h.newReplyMessage(message, text)
+	keyboard := h.createCancelFlowKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
 }
 
 
@@ -2063,3 +2162,6 @@ func (h *Handler) showPromptEntryScreen(callback *tgbotapi.CallbackQuery, modelI
 		h.Bot.Send(deleteMsg)
 	}
 }
+
+
+

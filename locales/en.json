@@ -82,5 +82,8 @@
   "button_removebg": "🖼️ Remove Background",
 "removebg_prompt": "Please send the photo you want to remove the background from. This will cost {cost} 💵.",
   "removebg_success": "✅ Here is your image with the background removed.",
-  "raw_files_sending": "⏳ Sending files..."
+  "raw_files_sending": "⏳ Sending files...",
+  "button_upscaler": "✨ Upscale Image",
+"upscaler_prompt": "Please send the photo you want to upscale. This will cost {cost} 💵.",
+"upscaler_success": "✅ Here is your upscaled image."
   }

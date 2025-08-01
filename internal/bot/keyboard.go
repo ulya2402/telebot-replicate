@@ -204,6 +204,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_upscaler"), "main_menu_upscaler"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_settings"), "main_menu_settings"),
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_language"), "main_menu_language"),
 		),
@@ -399,4 +402,6 @@ func (h *Handler) createStyleSelectionKeyboard(styles []config.StyleTemplate, la
 	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
 	
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
+
 }
+

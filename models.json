@@ -494,5 +494,44 @@
             "default": true
         }
       ]
+    },
+    {
+      "id": "google-upscaler",
+      "name": "Image Upscaler",
+      "replicate_id": "google/upscaler",
+      "tier": "basic",
+      "cost": 8,
+      "enabled": false,
+      "accepts_image_input": true,
+      "image_parameter_name": "image",
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "Using google upscaler for Upscale an image to a higher resolution. Supports x2 and x4 scaling.",
+      "parameters": [
+        {
+          "name": "upscale_factor",
+          "type": "string"
+        },
+        {
+          "name": "compression_quality",
+          "type": "integer",
+          "default": 80
+        }
+      ]
+    },
+    {
+      "id": "recraft-upscaler",
+      "name": "Recraft Upscaler",
+      "replicate_id": "recraft-ai/recraft-crisp-upscale",
+      "tier": "basic",
+      "cost": 2,
+      "enabled": true,
+      "accepts_image_input": true,
+      "image_parameter_name": "image",
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "Upscale image to a higher resolution with impressive quality using Recraft."
     }
   ]

@@ -82,5 +82,8 @@
   "removebg_prompt": "Silakan kirim foto yang ingin kamu hapus latar belakangnya. Biayanya {cost} 💵.",
   "button_removebg": "🖼️ Hapus Latar",
   "removebg_success": "✅ Ini dia gambarmu yang latar belakangnya sudah dihapus.",
-  "raw_files_sending": "⏳ Mengirim file..."
+  "raw_files_sending": "⏳ Mengirim file...",
+  "button_upscaler": "✨ Tingkatkan Resolusi",
+  "upscaler_prompt": "Silakan kirim foto yang ingin kamu tingkatkan resolusinya. Biayanya {cost} 💵.",
+  "upscaler_success": "✅ Ini dia gambarmu yang sudah ditingkatkan."
 }
