@@ -1,0 +1,22 @@
+[
+    {
+      "product_name": "Starter Pack",
+      "credits_amount": 125,
+      "product_url": "https://buymeacoffee.com/ilya2402/e/440659"
+    },
+    {
+      "product_name": "Value Pack",
+      "credits_amount": 250,
+      "product_url": "https://buymeacoffee.com/ilya2402/e/440661"
+    },
+    {
+      "product_name": "Creator Pack",
+      "credits_amount": 800,
+      "product_url": "https://buymeacoffee.com/ilya2402/e/440662"
+    },
+    {
+      "product_name": "Pro Pack",
+      "credits_amount": 1200,
+      "product_url": "https://buymeacoffee.com/ilya2402/e/440663"
+    }
+  ]

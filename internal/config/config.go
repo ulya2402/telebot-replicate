@@ -17,6 +17,12 @@ type StyleTemplate struct {
 	PromptSuffix string `json:"prompt_suffix"`
 }
 
+type BMACCreditPackage struct {
+	ProductName   string `json:"product_name"`
+	CreditsAmount int    `json:"credits_amount"`
+	ProductURL    string `json:"product_url"`
+}
+
 func LoadStyles(file string) []StyleTemplate {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -128,6 +134,20 @@ func Load() *Config {
 		ForceSubscribeChannelID: channelID,
 	}
 }
+
+func LoadBMACPackages(file string) []BMACCreditPackage {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatalf("FATAL: Could not read bmac_packages file %s: %v", file, err)
+	}
+	var packages []BMACCreditPackage
+	if err := json.Unmarshal(data, &packages); err != nil {
+		log.Fatalf("FATAL: Could not parse bmac_packages file %s: %v", file, err)
+	}
+	log.Printf("INFO: Loaded %d BMAC credit packages", len(packages))
+	return packages
+}
+
 
 func LoadModels(file string) []Model {
 	data, err := ioutil.ReadFile(file)

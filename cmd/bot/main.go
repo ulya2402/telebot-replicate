@@ -9,6 +9,7 @@ import (
 	"telegram-ai-bot/internal/payments"
 	"telegram-ai-bot/internal/services"
 
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -35,7 +36,7 @@ func main() {
 	log.Printf("INFO: Authorized on account %s", api.Self.UserName)
 
 	// PERBAIKAN: Inisialisasi paymentHandler sebelum handler utama
-	paymentHandler := payments.NewPaymentHandler(api, dbClient, localizer, cfg.PaymentProviderToken, cfg.ManualPaymentInfo, "internal/payments/packages.json")
+	paymentHandler := payments.NewPaymentHandler(api, dbClient, localizer, cfg.PaymentProviderToken, cfg.ManualPaymentInfo, "internal/payments/packages.json", "bmac_packages.json")
 
 	// PERBAIKAN: paymentHandler diberikan sebagai argumen saat membuat handler utama
 	handler := bot.NewHandler(api, dbClient, localizer, providers, models, templates, styles, replicateClient, cfg, paymentHandler)
@@ -47,4 +48,5 @@ func main() {
 	for update := range updates {
 		go handler.HandleUpdate(update)
 	}
+
 }

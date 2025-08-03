@@ -8,7 +8,7 @@
       "enabled": true,
       "accepts_image_input": false,
       "configurable_aspect_ratio": false,
-      "configurable_num_outputs": false,
+      "configurable_num_outputs": true,
       "show_templates": false,
       "parameters": [
         {

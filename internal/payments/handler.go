@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
+	"telegram-ai-bot/internal/config"
 	"telegram-ai-bot/internal/database"
 	"telegram-ai-bot/internal/localization"
 	
@@ -26,17 +27,20 @@ type PaymentHandler struct {
 	DB         *database.Client
 	Localizer  *localization.Localizer
 	Packages   []CreditPackage
+	BMACPackages []config.BMACCreditPackage
 	Token      string
 	ManualInfo string
 }
 
-func NewPaymentHandler(bot *tgbotapi.BotAPI, db *database.Client, loc *localization.Localizer, token, manualInfo, packagesFile string) *PaymentHandler {
+func NewPaymentHandler(bot *tgbotapi.BotAPI, db *database.Client, loc *localization.Localizer, token, manualInfo, packagesFile,  bmacPackagesFile string) *PaymentHandler {
 	packages := loadPackages(packagesFile)
+	bmacPackages := config.LoadBMACPackages(bmacPackagesFile) 
 	return &PaymentHandler{
 		Bot:        bot,
 		DB:         db,
 		Localizer:  loc,
 		Packages:   packages,
+		BMACPackages: bmacPackages,
 		Token:      token,
 		ManualInfo: manualInfo,
 	}
@@ -101,7 +105,7 @@ func (ph *PaymentHandler) HandleStarsInvoice(chatID int64, packageID string) {
 }
 // --- SELESAI PERBAIKAN ---
 
-func (ph *PaymentHandler) ShowTopUpOptions(chatID int64) {
+func (ph *PaymentHandler) ShowTopUpOptions(chatID int64, messageID ...int) {
 	lang := "en"
 	text := ph.Localizer.Get(lang, "topup_select_method")
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -112,13 +116,20 @@ func (ph *PaymentHandler) ShowTopUpOptions(chatID int64) {
 			tgbotapi.NewInlineKeyboardButtonData("💳 Manual Pay", "topup_manual"),
 		),
 	)
-	msg := tgbotapi.NewMessage(chatID, text)
-	msg.ReplyMarkup = &keyboard
-	msg.ParseMode = "html"
-	ph.Bot.Send(msg)
+	if len(messageID) > 0 {
+		msg := tgbotapi.NewEditMessageText(chatID, messageID[0], text)
+		msg.ReplyMarkup = &keyboard
+		msg.ParseMode = "html"
+		ph.Bot.Send(msg)
+	} else { // Jika tidak, kirim pesan baru.
+		msg := tgbotapi.NewMessage(chatID, text)
+		msg.ReplyMarkup = &keyboard
+		msg.ParseMode = "html"
+		ph.Bot.Send(msg)
+	}
 }
 
-func (ph *PaymentHandler) ShowStarsPackages(chatID int64) {
+func (ph *PaymentHandler) ShowStarsPackages(chatID int64, messageID int) {
 	lang := "en"
 	text := ph.Localizer.Get(lang, "topup_select_package")
 	var rows [][]tgbotapi.InlineKeyboardButton
@@ -127,15 +138,59 @@ func (ph *PaymentHandler) ShowStarsPackages(chatID int64) {
 		button := tgbotapi.NewInlineKeyboardButtonData(buttonText, "buy_stars:"+pkg.ID)
 		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
 	}
+	
+	backButton := tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "back_button"), "topup_back_to_main")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(backButton))
+
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
-	msg := tgbotapi.NewMessage(chatID, text)
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
 	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = "html"
 	ph.Bot.Send(msg)
 }
 
-func (ph *PaymentHandler) ShowManualPaymentInfo(chatID int64) {
-	msg := tgbotapi.NewMessage(chatID, ph.ManualInfo)
+// internal/payments/handler.go (SESUDAH)
+
+func (ph *PaymentHandler) ShowBMACPackages(chatID int64, messageID int) {
+	lang := ph.getUserLang(chatID)
+	text := ph.Localizer.Get(lang, "topup_bmac_select_package") + "\n\n" + ph.Localizer.Get(lang, "topup_bmac_instructions")
+	var rows [][]tgbotapi.InlineKeyboardButton
+	for _, pkg := range ph.BMACPackages {
+		buttonText := fmt.Sprintf("%s (%d Credits)", pkg.ProductName, pkg.CreditsAmount)
+		button := tgbotapi.NewInlineKeyboardButtonURL(buttonText, pkg.ProductURL)
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(button))
+	}
+
+	backButton := tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "back_button"), "topup_back_to_manual")
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(backButton))
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(rows...)
+
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	msg.ParseMode = "HTML"
+	msg.ReplyMarkup = &keyboard
+	ph.Bot.Send(msg)
+}
+
+func (ph *PaymentHandler) getUserLang(userID int64) string {
+    user, err := ph.DB.GetUserByTelegramID(userID)
+    if err == nil && user != nil {
+        return user.LanguageCode
+    }
+    return "en"
+}
+
+func (ph *PaymentHandler) ShowManualPaymentInfo(chatID int64, messageID int) {
+	lang := ph.getUserLang(chatID)
+	text := ph.ManualInfo
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "back_button"), "topup_back_to_manual"),
+		),
+	)
+
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = "html"
 	ph.Bot.Send(msg)
 }
@@ -190,5 +245,26 @@ func (ph *PaymentHandler) HandleSuccessfulPayment(message *tgbotapi.Message) {
 
 	msg := tgbotapi.NewMessage(userID, successText)
 	msg.ParseMode = "Markdown" 
+	ph.Bot.Send(msg)
+}
+
+func (ph *PaymentHandler) ShowManualPaymentOptions(chatID int64, messageID int) {
+	lang := ph.getUserLang(chatID)
+	text := ph.Localizer.Get(lang, "topup_manual_select_method")
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "button_bmac"), "topup_bmac"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "button_manual_transfer"), "topup_transfer_bank"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "back_button"), "topup_back_to_main"),
+		),
+	)
+
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	msg.ReplyMarkup = &keyboard
+	msg.ParseMode = "HTML"
 	ph.Bot.Send(msg)
 }

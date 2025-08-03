@@ -85,5 +85,12 @@
   "raw_files_sending": "⏳ Mengirim file...",
   "button_upscaler": "✨ Tingkatkan Resolusi",
   "upscaler_prompt": "Silakan kirim foto yang ingin kamu tingkatkan resolusinya. Biayanya {cost} 💵.",
-  "upscaler_success": "✅ Ini dia gambarmu yang sudah ditingkatkan."
+  "upscaler_success": "✅ Ini dia gambarmu yang sudah ditingkatkan.",
+  "button_bmac": "☕ Buy Me A Coffee",
+  "topup_bmac_select_package": "<b>Buy Me A Coffee</b>\n\nPilih paket di bawah ini. Kamu akan diarahkan ke situs Buy Me a Coffee untuk menyelesaikan pembayaran.",
+  "topup_bmac_instructions": "<b>PENTING!</b>\n\nSetelah pembayaran selesai, mohon kirim tangkapan layar (screenshot) bukti pembelian ke DM <b>@botaralabs</b> untuk klaim kredit.",
+  "bmac_success_notification": "✅ <b>Pembayaran Diterima!</b>\n\nTerima kasih atas dukunganmu! <b>{credits} kredit</b> telah ditambahkan ke akunmu.\nSaldo barumu: *{balance}* 💵.",
+  "bmac_error_admin": "⚠️ Pembayaran Buy Me A Coffee telah diterima, tetapi kami tidak dapat menambahkan kredit secara otomatis. Mohon hubungi administrator dengan bukti pembelianmu.",
+  "topup_manual_select_method": "<b>Pembayaran Manual</b>\n\nSilakan pilih metode pembayaran manual yang kamu inginkan di bawah ini:",
+  "button_manual_transfer": "💳 Transfer Bank"
 }

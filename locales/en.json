@@ -85,5 +85,12 @@
   "raw_files_sending": "⏳ Sending files...",
   "button_upscaler": "✨ Upscale Image",
 "upscaler_prompt": "Please send the photo you want to upscale. This will cost {cost} 💵.",
-"upscaler_success": "✅ Here is your upscaled image."
+"upscaler_success": "✅ Here is your upscaled image.",
+"button_bmac": "☕ Buy Me A Coffee",
+  "topup_bmac_select_package": "<b>Buy Me A Coffee</b>\n\nChoose a package below. You will be redirected to the Buy Me a Coffee website to complete your purchase.",
+"topup_bmac_instructions": "<b>IMPORTANT!</b>\n\nAfter completing the payment, please send a screenshot of the proof of purchase to the DM <b>@botaralabs</b> to claim your credits.",  
+"bmac_success_notification": "✅ <b>Payment Received!</b>\n\nThank you for your support! <b>{credits} credits</b> have been added to your account.\nYour new balance is *{balance}* 💵.",
+  "bmac_error_admin": "⚠️ A Buy Me A Coffee payment was received, but we could not automatically add credits. Please contact the administrator with your proof of purchase.",
+  "topup_manual_select_method": "<b>Manual Payment</b>\n\nPlease choose your preferred manual payment method below:",
+  "button_manual_transfer": "💳 Bank Transfer"
   }

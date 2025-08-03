@@ -608,8 +608,8 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "main_menu_referral":
 		h.handleReferral(dummyMessage)
 	
-		case "main_menu_topup": // <-- CASE BARU
-		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID)
+	case "main_menu_topup": // <-- CASE BARU
+		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID, callback.Message.MessageID)
 
 	case "download_raw": // <-- BARU
 		h.handleRawDownload(callback) // <-- BARU
@@ -618,10 +618,18 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		// Kembali ke menu utama dari halaman lain
 		h.handleStart(dummyMessage)
 	
-	case "topup_stars": // <-- BARU
-		h.PaymentHandler.ShowStarsPackages(callback.Message.Chat.ID)
-	case "topup_manual": // <-- BARU
-		h.PaymentHandler.ShowManualPaymentInfo(callback.Message.Chat.ID)
+	case "topup_stars":
+		h.PaymentHandler.ShowStarsPackages(callback.Message.Chat.ID, callback.Message.MessageID)
+	
+	case "topup_manual":
+		h.PaymentHandler.ShowManualPaymentOptions(callback.Message.Chat.ID, callback.Message.MessageID)
+	case "topup_transfer_bank":
+		h.PaymentHandler.ShowManualPaymentInfo(callback.Message.Chat.ID, callback.Message.MessageID)
+
+	case "topup_back_to_main": // <-- CASE BARU
+		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID, callback.Message.MessageID)
+	case "topup_back_to_manual": // <-- CASE BARU
+		h.PaymentHandler.ShowManualPaymentOptions(callback.Message.Chat.ID, callback.Message.MessageID)
 
 	case "faq_show":
         h.handleFaqShow(callback, data)
@@ -633,6 +641,8 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "style_select":
 		h.handleStyleSelection(callback, data)
 		return // Return agar tidak dilanjutkan ke switch di bawah
+	case "topup_bmac":
+		h.PaymentHandler.ShowBMACPackages(callback.Message.Chat.ID, callback.Message.MessageID)
 	case "main_menu_upscaler":
 		h.handleUpscaler(dummyMessage)
 	}
@@ -1236,30 +1246,41 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 		aspectRatio = user.AspectRatio
 	}
 
+	// --- AWAL PERUBAHAN LOGIKA BIAYA ---
 	var numOutputs int
+	// Periksa apakah model mendukung multiple outputs DAN pengguna tidak mengatur nilai custom
 	if selectedModel.ConfigurableNumOutputs {
-		numOutputs = user.NumOutputs
+		// Jika ada pengaturan custom, gunakan itu
+		if val, ok := customParams["num_outputs"]; ok {
+			if num, ok := val.(float64); ok {
+				numOutputs = int(num)
+			} else if num, ok := val.(int64); ok {
+				numOutputs = int(num)
+			}
+		} else {
+			// Jika tidak, gunakan pengaturan dari profil pengguna
+			numOutputs = user.NumOutputs
+		}
 	} else {
+		// Jika model tidak mendukung, paksa jumlah output menjadi 1
 		numOutputs = 1
 	}
 
+	// Pastikan numOutputs tidak pernah 0
+	if numOutputs == 0 {
+		numOutputs = 1
+	}
+	
+	// Untuk model spesial, selalu atur numOutputs ke 1
 	if modelID == "remove-background" || modelID == "recraft-upscaler" {
 		numOutputs = 1
 		delete(customParams, "num_outputs")
 	}
 
-	if val, ok := customParams["num_outputs"]; ok {
-		if num, ok := val.(float64); ok {
-			numOutputs = int(num)
-		} else if num, ok := val.(int64); ok {
-			numOutputs = int(num)
-		}
-	}
-	if numOutputs == 0 {
-		numOutputs = 1
-	}
-
+	// Kalkulasi biaya menggunakan numOutputs yang sudah divalidasi
 	totalCost := selectedModel.Cost * numOutputs
+	// --- AKHIR PERUBAHAN LOGIKA BIAYA ---
+
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
 
 	if totalAvailableCredits < totalCost {
@@ -1282,6 +1303,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	// Panggil Replicate dengan numOutputs yang sudah divalidasi
 	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams)
 
 	if err != nil || len(imageUrls) == 0 {
