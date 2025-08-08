@@ -609,7 +609,7 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		h.handleReferral(dummyMessage)
 	
 	case "main_menu_topup": // <-- CASE BARU
-		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID)
 
 	case "download_raw": // <-- BARU
 		h.handleRawDownload(callback) // <-- BARU
