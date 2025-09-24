@@ -179,7 +179,10 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	if command == "referral" {
 		subscribed, _ := h.isUserSubscribed(message.From.ID)
 		if !subscribed {
-			user, _ := h.getOrCreateUser(message.From)
+			user, err := h.getOrCreateUser(message.From)
+			if err != nil {
+				return
+			}
 			lang := user.LanguageCode
 
 			chat, err := h.Bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: h.Config.ForceSubscribeChannelID}})
@@ -216,6 +219,10 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
         h.handleFaq(message)
 	case "img", "gen":
 		h.handleImageCommand(message)
+	case "vids":
+		h.handleVideoCommand(message)
+	case "exchange":
+		h.handleExchangeCommand(message)
 	case "profile", "status":
 		h.handleProfile(message)
 	case "referral":
@@ -454,7 +461,10 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	if action == "main_menu_referral" {
 		subscribed, _ := h.isUserSubscribed(callback.From.ID)
 		if !subscribed {
-			user, _ := h.getOrCreateUser(callback.From)
+			user, err := h.getOrCreateUser(callback.From)
+			if err != nil {
+				return
+			}
 			lang := user.LanguageCode
 
 			chat, err := h.Bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: h.Config.ForceSubscribeChannelID}})
@@ -482,7 +492,33 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 
 	switch action {
 	case "back_to_providers": // <-- AKSI BARU
-		h.showProviderSelection(callback)
+	h.userStatesMutex.Lock()
+	state, ok := h.userStates[callback.From.ID]
+	h.userStatesMutex.Unlock()
+
+	if ok {
+		var modelType string
+		if strings.Contains(state, "image") {
+			modelType = "image"
+		} else if strings.Contains(state, "video") {
+			modelType = "video"
+		}
+
+		if modelType != "" {
+			// Panggil helper baru untuk MENGEDIT pesan yang ada
+			h.showProviderMenu(callback.Message.Chat.ID, callback.From.ID, modelType, callback.Message.MessageID)
+			return
+		}
+	}
+	
+	// Fallback jika state tidak terdeteksi
+	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+	h.Bot.Request(deleteMsg)
+	dummyMessage := &tgbotapi.Message{
+		From: callback.From,
+		Chat: callback.Message.Chat,
+	}
+	h.handleStart(dummyMessage)
 	case "provider_select": // <-- AKSI BARU
 		h.handleProviderSelection(callback, data)
 	case "model_page":
@@ -504,7 +540,6 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 			h.handleSelectAdvancedSetting(callback, parts[1], parts[2])
 		}
 	case "adv_setting_back":
-		// Ambil state pengguna saat ini untuk mengetahui model & gaya yang dipilih
 		h.userStatesMutex.Lock()
 		state, ok := h.userStates[callback.From.ID]
 		h.userStatesMutex.Unlock()
@@ -587,8 +622,11 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
         h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
 	
 	case "main_menu_generate":
-		// Panggil logika /img, tapi sebagai callback
 		h.handleImageCommand(dummyMessage)
+	case "main_menu_generate_video":
+		h.handleVideoCommand(dummyMessage)
+	case "main_menu_exchange":
+		h.handleExchangeCommand(dummyMessage)
 	case "main_menu_removebg":
 		h.handleRemoveBg(dummyMessage)
 	case "main_menu_settings":
@@ -608,7 +646,7 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "main_menu_referral":
 		h.handleReferral(dummyMessage)
 	
-	case "main_menu_topup": // <-- CASE BARU
+	case "main_menu_topup": 
 		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID)
 
 	case "download_raw": // <-- BARU
@@ -727,25 +765,43 @@ func (h *Handler) handleProviderSelection(callback *tgbotapi.CallbackQuery, prov
 		return
 	}
 
+	h.userStatesMutex.Lock()
+	state, ok := h.userStates[user.TelegramID]
+	h.userStatesMutex.Unlock()
+
+	var modelType string
+	if ok {
+		if strings.Contains(state, "image") {
+			modelType = "image"
+		} else if strings.Contains(state, "video") {
+			modelType = "video"
+		}
+	}
+
+	// Jika state tidak valid atau tidak ditemukan, hentikan proses untuk menghindari bug
+	if modelType == "" {
+		log.Printf("WARN: Invalid or missing state for user %d in handleProviderSelection", user.TelegramID)
+		return
+	}
+
+
 	// Filter model berdasarkan provider yang dipilih
 	var providerModels []config.Model
 	for _, m := range h.Models {
-		if strings.HasPrefix(m.ReplicateID, providerID+"/") {
+		if strings.HasPrefix(m.ReplicateID, providerID+"/") && m.Type == modelType {
 			providerModels = append(providerModels, m)
 		}
 	}
 
-	// Buat teks dengan deskripsi provider
 	text := fmt.Sprintf("<b>%s</b>\n\n%s\n\nSilakan pilih model:", selectedProvider.Name, selectedProvider.Description)
 
-	// Buat keyboard model untuk provider ini
 	keyboard := h.createModelSelectionKeyboard(providerModels, lang, providerID, 0)
 
-	// Edit pesan sebelumnya untuk menampilkan model
 	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard
 	h.Bot.Send(msg)
+
 }
 
 func (h *Handler) getUserLang(userID int64) string {
@@ -771,18 +827,43 @@ func (h *Handler) handleCancel(message *tgbotapi.Message) {
 
 // FUNGSI BARU UNTUK TOMBOL BATAL
 func (h *Handler) handleCancelCallback(callback *tgbotapi.CallbackQuery) {
-	h.userStatesMutex.Lock()   
+	h.userStatesMutex.Lock()
+	// 1. Ambil state SEBELUM dihapus untuk mengetahui alur mana yang aktif
+	state, ok := h.userStates[callback.From.ID]
 	delete(h.userStates, callback.From.ID)
-	defer h.userStatesMutex.Unlock() 
+	h.userStatesMutex.Unlock()
 
+	// 2. Hapus pesan yang berisi tombol "Cancel"
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
-    h.Bot.Request(deleteMsg)
+	h.Bot.Request(deleteMsg)
 
+	// 3. Buat "pesan palsu" untuk memicu handler yang benar
 	dummyMessage := &tgbotapi.Message{
-        From: callback.From,
-        Chat: callback.Message.Chat,
-    }
-    h.handleImageCommand(dummyMessage)
+		From: callback.From,
+		Chat: callback.Message.Chat,
+	}
+
+	// 4. Periksa state sebelumnya dan kembali ke menu yang sesuai
+	if ok {
+		if strings.Contains(state, "image") || strings.Contains(state, "style") {
+			// Jika dari alur gambar, kembali ke pemilihan provider gambar
+			h.handleImageCommand(dummyMessage)
+			return
+		} else if strings.Contains(state, "video") {
+			// Jika dari alur video, kembali ke pemilihan provider video
+			h.handleVideoCommand(dummyMessage)
+			return
+		}
+	}
+
+	// 5. Fallback: jika state tidak diketahui, kembali ke menu utama (seperti sebelumnya)
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, h.Localizer.Get(lang, "flow_cancelled"))
+	h.Bot.Send(msg)
+	h.handleStart(dummyMessage)
+	// =================== PERUBAHAN SELESAI DI SINI ===================
+
 }
 
 
@@ -803,7 +884,6 @@ func (h *Handler) navigateTemplates(callback *tgbotapi.CallbackQuery, page int) 
 func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, templateID string) {
 	h.userStatesMutex.Lock()
 	state, ok := h.userStates[callback.From.ID]
-	// Pastikan state-nya benar sebelum memproses
 	if !ok || !strings.HasPrefix(state, "prompt_for:") {
 		h.userStatesMutex.Unlock()
 		return
@@ -862,6 +942,53 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 		return
 	}
 
+	if selectedModel.Type == "video" {
+		if user.Diamonds < selectedModel.DiamondCost {
+			args := map[string]string{
+				"required": strconv.Itoa(selectedModel.DiamondCost),
+				"balance":  strconv.Itoa(user.Diamonds),
+			}
+			text := h.Localizer.Getf(lang, "insufficient_diamonds", args)
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_exchange"), "main_menu_exchange"),
+				),
+			)
+			msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+			msg.ReplyMarkup = &keyboard
+			h.Bot.Send(msg)
+			return
+		}
+
+		h.userStatesMutex.Lock()
+		h.userStates[user.TelegramID] = fmt.Sprintf("prompt_for_video:%s", modelID)
+		h.userStatesMutex.Unlock()
+
+		args := map[string]string{
+			"model_name":        selectedModel.Name,
+			"model_description": selectedModel.Description,
+		}
+		text := h.Localizer.Getf(lang, "enter_prompt_for_video", args)
+
+		var keyboardRows [][]tgbotapi.InlineKeyboardButton
+		if len(selectedModel.Parameters) > 0 {
+			advButton := tgbotapi.NewInlineKeyboardButtonData("⚙️ Advanced Settings", "adv_setting_open:"+modelID)
+			keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(advButton))
+		}
+		cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
+		keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
+
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+		return
+	}
+
+
+
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
 	if totalAvailableCredits < selectedModel.Cost {
 		args := map[string]string{
@@ -895,6 +1022,96 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 	h.Bot.Send(msg)
 }
 
+func (h *Handler) triggerVideoGeneration(user *database.User, originalMessage *tgbotapi.Message, modelID, prompt, imageURL string) {
+	h.userStatesMutex.Lock()
+	delete(h.userStates, user.TelegramID)
+	h.userStatesMutex.Unlock()
+
+	lang := user.LanguageCode
+
+	var selectedModel *config.Model
+	for _, m := range h.Models {
+		if m.ID == modelID {
+			selectedModel = &m
+			break
+		}
+	}
+	if selectedModel == nil {
+		log.Printf("ERROR: Video model with ID '%s' not found.", modelID)
+		return
+	}
+
+	if user.Diamonds < selectedModel.DiamondCost {
+		return
+	}
+
+	waitMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "video_generating"))
+	sentMsg, _ := h.Bot.Send(waitMsg)
+	defer h.Bot.Send(tgbotapi.NewDeleteMessage(originalMessage.Chat.ID, sentMsg.MessageID))
+
+	action := tgbotapi.NewChatAction(originalMessage.Chat.ID, tgbotapi.ChatUploadVideo)
+	h.Bot.Send(action)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	var customParams map[string]interface{}
+	if user.CustomSettings != "" {
+		json.Unmarshal([]byte(user.CustomSettings), &customParams)
+	}
+
+	videoUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, imageURL, selectedModel.ImageParameterName, "", 1, customParams)
+
+	if err != nil || len(videoUrls) == 0 {
+		failMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "video_generation_failed"))
+		h.Bot.Send(failMsg)
+		return
+	}
+
+	user.Diamonds -= selectedModel.DiamondCost
+	h.DB.UpdateUser(user)
+
+	safePrompt := html.EscapeString(prompt)
+	if len(safePrompt) > 900 {
+		safePrompt = safePrompt[:900] + "..."
+	}
+	caption := fmt.Sprintf("<b>Prompt:</b> <pre>%s</pre>\n<b>Model:</b> <code>%s</code>\n<b>Cost:</b> %d 💎", safePrompt, selectedModel.Name, selectedModel.DiamondCost)
+
+	resp, httpErr := http.Get(videoUrls[0])
+	if httpErr != nil {
+		log.Printf("ERROR: Failed to download video file: %v", httpErr)
+		h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "video_generation_failed")))
+		return
+	}
+	defer resp.Body.Close()
+
+	bytes, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		log.Printf("ERROR: Failed to read video file bytes: %v", readErr)
+		h.Bot.Send(h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "video_generation_failed")))
+		return
+	}
+
+	videoFile := tgbotapi.FileBytes{
+		Name:  "generated-video.mp4",
+		Bytes: bytes,
+	}
+
+	videoMsg := h.newReplyVideo(originalMessage, videoFile)
+	videoMsg.Caption = caption
+	videoMsg.ParseMode = "HTML"
+	h.Bot.Send(videoMsg)
+}
+
+// Tambahkan fungsi helper baru ini di mana saja di dalam handlers.go
+func (h *Handler) newReplyVideo(originalMessage *tgbotapi.Message, video tgbotapi.RequestFileData) tgbotapi.VideoConfig {
+    msg := tgbotapi.NewVideo(originalMessage.Chat.ID, video)
+    if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+        msg.ReplyToMessageID = originalMessage.MessageID
+    }
+    return msg
+}
+
 func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	h.userStatesMutex.Lock()
 	state, ok := h.userStates[message.From.ID]
@@ -904,8 +1121,91 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
-	user, _ := h.getOrCreateUser(message.From)
+	user, err := h.getOrCreateUser(message.From)
+	if err != nil {
+		return
+	}	
 	lang := user.LanguageCode
+
+	if state == "awaiting_exchange_amount" {
+		diamondsToBuy, err := strconv.Atoi(message.Text)
+		if err != nil || diamondsToBuy <= 0 {
+			msg := h.newReplyMessage(message, h.Localizer.Get(lang, "exchange_invalid_amount"))
+			h.Bot.Send(msg)
+			return
+		}
+
+		creditsNeeded := diamondsToBuy * 20
+		totalCredits := user.PaidCredits + user.FreeCredits
+
+		if totalCredits < creditsNeeded {
+			args := map[string]string{
+				"diamonds_to_buy": strconv.Itoa(diamondsToBuy),
+				"credits_needed":    strconv.Itoa(creditsNeeded),
+				"credits_balance":   strconv.Itoa(totalCredits),
+			}
+			msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "exchange_not_enough_credits", args))
+			h.Bot.Send(msg)
+			return
+		}
+
+		creditsToDeduct := creditsNeeded
+		if user.FreeCredits >= creditsToDeduct {
+			user.FreeCredits -= creditsToDeduct
+		} else {
+			creditsToDeduct -= user.FreeCredits
+			user.FreeCredits = 0
+			user.PaidCredits -= creditsToDeduct
+		}
+		
+		user.Diamonds += diamondsToBuy
+		h.DB.UpdateUser(user)
+
+		h.userStatesMutex.Lock()
+		delete(h.userStates, user.TelegramID)
+		h.userStatesMutex.Unlock()
+
+		args := map[string]string{
+			"credits_spent":       strconv.Itoa(creditsNeeded),
+			"diamonds_gained":     strconv.Itoa(diamondsToBuy),
+			"new_diamonds_balance": strconv.Itoa(user.Diamonds),
+		}
+		msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "exchange_success", args))
+		h.Bot.Send(msg)
+		return
+	}
+	
+	if strings.HasPrefix(state, "prompt_for_video:") {
+		modelID := strings.TrimPrefix(state, "prompt_for_video:")
+		
+		var prompt, imageURL string
+		
+		if message.Photo != nil && len(message.Photo) > 0 {
+			// Jika ada foto, gunakan caption sebagai prompt
+			bestPhoto := message.Photo[len(message.Photo)-1]
+			url, err := h.getFileURL(bestPhoto.FileID)
+			if err != nil {
+				log.Printf("ERROR: Failed to get file URL for video prompt: %v", err)
+				return
+			}
+			imageURL = url
+			prompt = message.Caption
+		} else {
+			// Jika tidak ada foto, gunakan teks pesan sebagai prompt
+			prompt = message.Text
+		}
+
+		if prompt == "" {
+			// Pastikan prompt tidak kosong
+			return
+		}
+
+		h.triggerVideoGeneration(user, message, modelID, prompt, imageURL)
+		// =================== PERUBAHAN SELESAI DI SINI ===================
+		return
+	}
+
+
 
 	if state == "awaiting_image_for_removebg" {
 		if message.Photo == nil || len(message.Photo) == 0 {
@@ -1238,6 +1538,17 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 			json.Unmarshal([]byte(user.CustomSettings), &customParams)
 		} else {
 			customParams = make(map[string]interface{})
+		}
+	}
+
+	for _, param := range selectedModel.Parameters {
+		// Jika parameter punya nilai default
+		if param.Default != nil {
+			// Dan jika pengguna belum mengatur nilai custom untuk parameter ini
+			if _, exists := customParams[param.Name]; !exists {
+				// Terapkan nilai default ke dalam customParams
+				customParams[param.Name] = param.Default
+			}
 		}
 	}
 
@@ -1580,15 +1891,17 @@ func (h *Handler) handleProfile(message *tgbotapi.Message) {
 
 	totalCredits := user.PaidCredits + user.FreeCredits
 	args := map[string]string{
-		"id":            strconv.FormatInt(user.TelegramID, 10),
+		"paid_credits":  "`" + strconv.Itoa(user.PaidCredits) + "`",
+		"free_credits":  "`" + strconv.Itoa(user.FreeCredits) + "`",
+		"diamonds":      "`" + strconv.Itoa(user.Diamonds) + "`",
 		"total_credits": strconv.Itoa(totalCredits),
-		"paid_credits":  "`" + strconv.Itoa(user.PaidCredits) + "`", // Tambahkan ` agar font berbeda
-		"free_credits":  "`" + strconv.Itoa(user.FreeCredits) + "`", // Tambahkan ` agar font berbeda
 		"reset_time":    resetTimeStr,
 	}
 
 	text := h.Localizer.Getf(lang, "profile", args)
+
 	msg := h.newReplyMessage(message, text)
+
 	msg.ParseMode = "Markdown"
 	keyboard := h.createProfileKeyboard(lang)
 	msg.ReplyMarkup = &keyboard
@@ -1677,6 +1990,7 @@ func (h *Handler) getOrCreateUser(tgUser *tgbotapi.User) (*database.User, error)
 			Username:             tgUser.UserName,
 			PaidCredits:          0,
 			FreeCredits:          5,
+			Diamonds:             0,
 			LastFreeCreditsReset: time.Now(),
 			LanguageCode:         "en",
 			AspectRatio:          "1:1",
@@ -1709,21 +2023,16 @@ func (h *Handler) getOrCreateUser(tgUser *tgbotapi.User) (*database.User, error)
 }
 
 func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
-	// Panggil getOrCreateUser yang sudah memiliki logika reset kredit
 	user, _ := h.getOrCreateUser(message.From)
-	lang := user.LanguageCode
 
-	args := map[string]string{
-		"aspect_ratio": user.AspectRatio,
-		"num_images":   strconv.Itoa(user.NumOutputs),
-	}
-	text := h.Localizer.Getf(lang, "choose_model", args) // Gunakan string choose_model yang lebih generik jika ada
 
-	keyboard := h.createProviderSelectionKeyboard(h.Providers, lang) // Panggil keyboard provider
-	msg := h.newReplyMessage(message, text)
-	msg.ParseMode = "HTML"
-	msg.ReplyMarkup = &keyboard
-	h.Bot.Send(msg)
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_image_provider"
+	h.userStatesMutex.Unlock()
+
+	h.showProviderMenu(message.Chat.ID, user.TelegramID, "image")
+
+
 }
 
 // File: internal/bot/handlers.go
@@ -2185,5 +2494,92 @@ func (h *Handler) showPromptEntryScreen(callback *tgbotapi.CallbackQuery, modelI
 	}
 }
 
+func (h *Handler) handleVideoCommand(message *tgbotapi.Message) {
+	user, _ := h.getOrCreateUser(message.From)
+
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_video_provider"
+	h.userStatesMutex.Unlock()
+
+	h.showProviderMenu(message.Chat.ID, user.TelegramID, "video")
 
 
+	
+}
+
+func (h *Handler) handleExchangeCommand(message *tgbotapi.Message) {
+	user, err := h.getOrCreateUser(message.From)
+	if err != nil {
+		return
+	}
+	lang := user.LanguageCode
+
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_exchange_amount"
+	h.userStatesMutex.Unlock()
+
+	totalCredits := user.PaidCredits + user.FreeCredits
+	args := map[string]string{
+		"credits":  strconv.Itoa(totalCredits),
+		"diamonds": strconv.Itoa(user.Diamonds),
+	}
+	text := h.Localizer.Getf(lang, "exchange_prompt", args)
+
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "HTML"
+	keyboard := h.createCancelFlowKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+
+func (h *Handler) showProviderMenu(chatID int64, userID int64, modelType string, messageID... int) {
+	user, _ := h.getOrCreateUser(&tgbotapi.User{ID: userID})
+	lang := user.LanguageCode
+
+	// 1. Saring provider berdasarkan tipe model (image/video)
+	var filteredProviders []config.Provider
+	providerHasModel := make(map[string]bool)
+
+	for _, model := range h.Models {
+		if model.Type == modelType {
+			providerID := strings.Split(model.ReplicateID, "/")[0]
+			providerHasModel[providerID] = true
+		}
+	}
+
+	for _, provider := range h.Providers {
+		if _, ok := providerHasModel[provider.ID]; ok {
+			filteredProviders = append(filteredProviders, provider)
+		}
+	}
+
+	// 2. Siapkan teks dan keyboard
+	var text string
+	if modelType == "video" {
+		text = h.Localizer.Get(lang, "choose_video_model")
+	} else {
+		args := map[string]string{
+			"aspect_ratio": user.AspectRatio,
+			"num_images":   strconv.Itoa(user.NumOutputs),
+		}
+		text = h.Localizer.Getf(lang, "choose_model", args)
+	}
+
+	keyboard := h.createProviderSelectionKeyboard(filteredProviders, lang)
+
+	// 3. Kirim sebagai pesan baru atau edit pesan lama
+	if len(messageID) > 0 {
+		// Edit pesan yang ada (untuk tombol kembali)
+		msg := tgbotapi.NewEditMessageText(chatID, messageID[0], text)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+	} else {
+		// Kirim pesan baru (untuk perintah /img atau /vids)
+		msg := tgbotapi.NewMessage(chatID, text)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = &keyboard
+		h.Bot.Send(msg)
+	}
+}

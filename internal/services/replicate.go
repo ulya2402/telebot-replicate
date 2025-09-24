@@ -28,7 +28,6 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 
 	// Tambahkan parameter opsional ke input jika nilainya ada
 	if imageURL != "" {
-		// Gunakan imageParamName jika ada, jika tidak gunakan default "input_image"
 		paramName := "input_image"
 		if imageParamName != "" {
 			paramName = imageParamName
@@ -47,15 +46,6 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 		if value != nil {
 			log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
 			input[key] = value
-		}
-	}
-
-	if customParams != nil {
-		for key, value := range customParams {
-			if value != nil {
-				log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
-				input[key] = value
-			}
 		}
 	}
 

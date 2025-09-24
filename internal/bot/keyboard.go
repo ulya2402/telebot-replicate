@@ -49,7 +49,13 @@ func (h *Handler) createModelSelectionKeyboard(models []config.Model, lang strin
 
 	var row []tgbotapi.InlineKeyboardButton
 	for i, model := range paginatedModels {
-		buttonText := fmt.Sprintf("%s (%d 💵)", model.Name, model.Cost)
+		var buttonText string
+		if model.Type == "video" {
+			buttonText = fmt.Sprintf("%s (%d 💎)", model.Name, model.DiamondCost)
+		} else {
+			buttonText = fmt.Sprintf("%s (%d 💵)", model.Name, model.Cost)
+		}
+		
 		callbackData := fmt.Sprintf("model_select:%s", model.ID)
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData))
 
@@ -128,6 +134,14 @@ func (h *Handler) createLanguageSelectionKeyboard() tgbotapi.InlineKeyboardMarku
 		tgbotapi.NewInlineKeyboardRow(
 			// --- BARIS YANG DITAMBAHKAN ---
 			tgbotapi.NewInlineKeyboardButtonData("Русский 🇷🇺", "lang_select:ru"),
+			tgbotapi.NewInlineKeyboardButtonData("Español 🇪🇸", "lang_select:es"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Deutsch 🇩🇪", "lang_select:de"),
+			tgbotapi.NewInlineKeyboardButtonData("हिन्दी 🇮🇳", "lang_select:hi"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("中文 🇨🇳", "lang_select:zh"),
 		),
 	)
 	return keyboard
@@ -200,6 +214,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate_video"), "main_menu_generate_video"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_removebg"), "main_menu_removebg"),
 
 		),
@@ -216,6 +233,7 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_exchange"), "main_menu_exchange"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_faq"), "main_menu_faq"),
@@ -227,6 +245,7 @@ func (h *Handler) createProfileKeyboard(lang string) tgbotapi.InlineKeyboardMark
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_exchange"), "main_menu_exchange"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_referral"), "main_menu_referral"),
@@ -278,6 +297,12 @@ func (h *Handler) createFaqKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 		),
 		tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q7_button"), "faq_show:q7"),
+        ),
+		tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q8_button"), "faq_show:q8"),
+        ),
+		tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "faq_q9_button"), "faq_show:q9"),
         ),
     )
     return keyboard

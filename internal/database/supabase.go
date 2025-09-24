@@ -15,7 +15,8 @@ type User struct {
 	TelegramID          int64     `json:"telegram_id"`
 	Username            string    `json:"username"`
 	PaidCredits          int       `json:"paid_credits"`            // <-- PERUBAHAN: Dari Credits
-	FreeCredits          int       `json:"free_credits"`            // <-- BARU: Dompet kredit gratis
+	FreeCredits          int       `json:"free_credits"`            
+	Diamonds            int       `json:"diamonds"`
 	LastFreeCreditsReset time.Time `json:"last_free_credits_reset"`
 	IsPremium           bool      `json:"is_premium"`
 	LanguageCode        string    `json:"language_code"`

@@ -1,6 +1,8 @@
 [
     {
       "id": "flux-schnell",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux Schnell",
       "replicate_id": "black-forest-labs/flux-schnell",
       "tier": "basic",
@@ -45,6 +47,8 @@
     },
     {
       "id": "imagen-4-fast",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Imagen 4 Fast",
       "replicate_id": "google/imagen-4-fast",
       "tier": "standard",
@@ -68,6 +72,8 @@
     },
     {
       "id": "imagen-3-fast",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Imagen 3 Fast",
       "replicate_id": "google/imagen-3-fast",
       "tier": "standard",
@@ -91,6 +97,8 @@
     },
     {
       "id": "flux-dev-lora",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux Dev Lora",
       "replicate_id": "black-forest-labs/flux-dev-lora",
       "tier": "standard",
@@ -146,6 +154,8 @@
     },
     {
       "id": "recraft-v3",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Recraft V3",
       "replicate_id": "recraft-ai/recraft-v3",
       "tier": "standard",
@@ -159,6 +169,8 @@
     },
     {
       "id": "imagen-4",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Imagen 4",
       "replicate_id": "google/imagen-4",
       "tier": "standard",
@@ -182,6 +194,8 @@
     },
     {
       "id": "flux-kontext-pro",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux Kontext Pro",
       "replicate_id": "black-forest-labs/flux-kontext-pro",
       "tier": "standard",
@@ -205,7 +219,7 @@
           "name": "safety_tolerance",
           "label": "Safety Tolerance",
           "type": "integer",
-          "default": "2",
+          "default": 2,
           "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
           "options": ["1", "2", "3", "4", "5"]
         },
@@ -221,6 +235,8 @@
     },
     {
       "id": "gen4-image",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Gen 4",
       "replicate_id": "runwayml/gen4-image",
       "tier": "premium",
@@ -262,6 +278,8 @@
     },
     {
       "id": "flux-pro",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux Pro",
       "replicate_id": "black-forest-labs/flux-pro",
       "tier": "premium",
@@ -293,6 +311,8 @@
     },
     {
       "id": "ideogram-v3-balanced",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Ideogram V3 Balanced",
       "replicate_id": "ideogram-ai/ideogram-v3-balanced",
       "tier": "premium",
@@ -324,6 +344,8 @@
     },
     {
       "id": "imagen-4-ultra",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Imagen 4 Ultra",
       "replicate_id": "google/imagen-4-ultra",
       "tier": "premium",
@@ -337,6 +359,8 @@
     },
     {
       "id": "flux-kontext-max",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux Kontext Max",
       "replicate_id": "black-forest-labs/flux-kontext-max",
       "tier": "premium",
@@ -376,6 +400,8 @@
     },
     {
       "id": "recraft-v3-svg",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Recraft V3 SVG",
       "replicate_id": "recraft-ai/recraft-v3-svg",
       "tier": "premium",
@@ -389,6 +415,8 @@
     },
     {
       "id": "seedream-3",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Seedream 3.0",
       "replicate_id": "bytedance/seedream-3",
       "tier": "basic",
@@ -401,6 +429,8 @@
     },
     {
       "id": "ideogram-v3-turbo",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "ideogram v3 turbo",
       "replicate_id": "ideogram-ai/ideogram-v3-turbo",
       "tier": "basic",
@@ -413,6 +443,8 @@
     },
     {
       "id": "ideogram-v3-quality",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "ideogram v3 Quality",
       "replicate_id": "ideogram-ai/ideogram-v3-quality",
       "tier": "basic",
@@ -425,6 +457,8 @@
     },
     {
       "id": "flux-1.1-pro",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Flux 1.1 Pro",
       "replicate_id": "black-forest-labs/flux-1.1-pro",
       "tier": "basic",
@@ -471,6 +505,8 @@
     },
     {
       "id": "remove-background",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Remove Background",
       "replicate_id": "bria/remove-background",
       "tier": "basic",
@@ -497,6 +533,8 @@
     },
     {
       "id": "google-upscaler",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Image Upscaler",
       "replicate_id": "google/upscaler",
       "tier": "basic",
@@ -522,6 +560,8 @@
     },
     {
       "id": "recraft-upscaler",
+      "type": "image",
+      "diamond_cost": 0,
       "name": "Recraft Upscaler",
       "replicate_id": "recraft-ai/recraft-crisp-upscale",
       "tier": "basic",
@@ -533,5 +573,46 @@
       "configurable_num_outputs": false,
       "show_templates": false,
       "description": "Upscale image to a higher resolution with impressive quality using Recraft."
-    }
+    },
+
+    {
+      "id": "seedance-1-lite",
+      "name": "Seedance 1 Lite",
+      "type": "video",
+      "replicate_id": "bytedance/seedance-1-lite",
+      "description": "Animate an image using a text prompt, or generate a video from text alone. This model creates a short video based on your image and motion description.",
+      "tier": "premium",
+      "cost": 0,
+      "diamond_cost": 1,
+      "enabled": true,
+      "accepts_image_input": true,
+      "image_parameter_name": "image",
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "parameters": [
+        {
+          "name": "resolution",
+          "label": "Resolution",
+          "type": "string",
+          "default": "480p",
+          "options": [
+            "480p"
+          ]
+        },
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "16:9",
+          "options": ["1:1", "16:9", "9:16", "4:3", "3:4", "21:9", "9:21"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation."
+        }
+      ]
+  }
   ]

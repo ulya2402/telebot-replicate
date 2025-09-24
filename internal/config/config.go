@@ -64,10 +64,12 @@ type Parameter struct {
 type Model struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Type        string `json:"type"`
 	Description               string `json:"description"`
 	ReplicateID string `json:"replicate_id"`
 	Tier        string `json:"tier"`
 	Cost        int    `json:"cost"`
+	DiamondCost int    `json:"diamond_cost"`
 	Enabled     bool   `json:"enabled"`
 	AcceptsImageInput bool   `json:"accepts_image_input"`
 	ImageParameterName      string      `json:"image_parameter_name,omitempty"` // <-- TAMBAHKAN INI
