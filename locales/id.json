@@ -109,5 +109,8 @@
   "video_generating": "⏳ Sedang membuat videomu... Ini mungkin butuh beberapa menit.",
   "video_generation_failed": "❌ Gagal membuat video. Coba lagi nanti ya.",
   "enter_prompt_for_video": "<b>{model_name}</b>\n\n<blockquote expandable>{model_description}</blockquote>\n\nModel ini memerlukan gambar dan perintah teks. Silakan kirim gambar dengan deskripsi gerakan di dalam caption.",
-  "video_prompt_error": "❌ Model ini mengharuskan kamu mengirim gambar dengan perintah teks (sebagai caption). Coba lagi ya."
+  "video_prompt_error": "❌ Model ini mengharuskan kamu mengirim gambar dengan perintah teks (sebagai caption). Coba lagi ya.",
+  "multi_image_button_add": "🖼️ Tambah Gambar (Selesai)",
+"multi_image_button_done": "✅ Selesai & Tambah Prompt",
+"multi_image_received": "✅ Gambar {count} dari 4 diterima."
 }

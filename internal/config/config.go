@@ -72,6 +72,7 @@ type Model struct {
 	DiamondCost int    `json:"diamond_cost"`
 	Enabled     bool   `json:"enabled"`
 	AcceptsImageInput bool   `json:"accepts_image_input"`
+	AcceptsMultipleImages   bool        `json:"accepts_multiple_images"` // <-- BARU
 	ImageParameterName      string      `json:"image_parameter_name,omitempty"` // <-- TAMBAHKAN INI
 	ConfigurableAspectRatio bool `json:"configurable_aspect_ratio"` // <-- Tambahkan ini
 	ConfigurableNumOutputs  bool `json:"configurable_num_outputs"`

@@ -343,6 +343,84 @@
       ]
     },
     {
+      "id": "nano-banana",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Nano Banana",
+      "replicate_id": "google/nano-banana",
+      "tier": "standard",
+      "cost": 15,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "image_parameter_name": "image_input",
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "A model from Google that can accept multiple images as input references to generate a new image."
+    },
+    {
+      "id": "seedream-4",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Seedream 4",
+      "replicate_id": "bytedance/seedream-4",
+      "tier": "standard",
+      "cost": 15,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "image_parameter_name": "image_input",
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "Unified text-to-image generation and precise single-sentence editing at up to 4K resolution.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        }
+      ]
+    },
+    {
+      "id": "qwen-image",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Qwen Image",
+      "replicate_id": "qwen/qwen-image",
+      "tier": "standard",
+      "cost": 8,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": false,
+      "configurable_aspect_ratio": false,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "An image generation foundation model in the Qwen series that achieves significant advances in complex text rendering.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
+        }
+      ]
+    },
+    {
       "id": "imagen-4-ultra",
       "type": "image",
       "diamond_cost": 0,

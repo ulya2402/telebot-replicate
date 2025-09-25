@@ -73,5 +73,8 @@
     "video_generating": "⏳ 正在生成您的视频... 这可能需要几分钟。",
     "video_generation_failed": "❌ 视频生成失败。请稍后再试。",
     "enter_prompt_for_video": "<b>{model_name}</b>\n\n<blockquote expandable>{model_description}</blockquote>\n\n此模型需要一张图像和一个文本提示。请发送一张带有动态描述标题的图像。",
-    "video_prompt_error": "❌ 此模型要求您发送一张带有文本提示（作为标题）的图像。请重试。"
+    "video_prompt_error": "❌ 此模型要求您发送一张带有文本提示（作为标题）的图像。请重试。",
+    "multi_image_button_add": "🖼️ 添加图像 (完成)",
+"multi_image_button_done": "✅ 完成并添加提示",
+"multi_image_received": "✅ 已收到 {count}/4 张图片。"
   }

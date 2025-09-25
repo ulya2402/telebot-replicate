@@ -21,17 +21,20 @@ func NewReplicateClient(apiToken string) (*ReplicateClient, error) {
 	return &ReplicateClient{client: r8}, nil
 }
 
-func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, imageParamName string, aspectRatio string, numOutputs int, customParams map[string]interface{}) ([]string, error) {
+// AWAL PERUBAHAN
+func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, imageParamName string, aspectRatio string, numOutputs int, customParams map[string]interface{}, imageURLs ...[]string) ([]string, error) {
 	input := replicate.PredictionInput{
 		"prompt": prompt,
 	}
 
-	// Tambahkan parameter opsional ke input jika nilainya ada
-	if imageURL != "" {
-		paramName := "input_image"
-		if imageParamName != "" {
-			paramName = imageParamName
-		}
+	paramName := "input_image"
+	if imageParamName != "" {
+		paramName = imageParamName
+	}
+
+	if len(imageURLs) > 0 && len(imageURLs[0]) > 0 {
+		input[paramName] = imageURLs[0]
+	} else if imageURL != "" {
 		input[paramName] = imageURL
 	}
 
@@ -74,3 +77,5 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 	log.Printf("ERROR: %v", err)
 	return nil, err
 }
+
+// AKHIR PERUBAHAN

@@ -109,5 +109,8 @@
     "video_generating": "⏳ Generando tu video... Esto podría tardar unos minutos.",
     "video_generation_failed": "❌ Falló la generación del video. Por favor, inténtalo de nuevo más tarde.",
     "enter_prompt_for_video": "<b>{model_name}</b>\n\n<blockquote expandable>{model_description}</blockquote>\n\nEste modelo requiere una imagen y un prompt de texto. Por favor, envía una imagen con la descripción del movimiento en el pie de foto.",
-    "video_prompt_error": "❌ Este modelo requiere que envíes una imagen con un prompt de texto (como pie de foto). Por favor, inténtalo de nuevo."
+    "video_prompt_error": "❌ Este modelo requiere que envíes una imagen con un prompt de texto (como pie de foto). Por favor, inténtalo de nuevo.",
+    "multi_image_button_add": "🖼️ Añadir Imagen (Listo)",
+"multi_image_button_done": "✅ Listo & Añadir Prompt",
+"multi_image_received": "✅ Imagen {count} de 4 recibida."
   }

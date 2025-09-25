@@ -108,6 +108,11 @@
     "video_generating": "⏳ Generating your video... This might take a few minutes.",
     "video_generation_failed": "❌ Video generation failed. Please try again later.",
     "enter_prompt_for_video": "<b>{model_name}</b>\n\n<blockquote expandable>{model_description}</blockquote>\n\nThis model requires an image and a text prompt. Please send an image with the motion description in the caption.",
-    "video_prompt_error": "❌ This model requires you to send an image with a text prompt (as a caption). Please try again."
+    "video_prompt_error": "❌ This model requires you to send an image with a text prompt (as a caption). Please try again.",
+    "multi_image_prompt": "<b>{model_name}</b>\n\nThis model supports multiple image inputs.\n\n- Send your photos <b>one by one</b> as a reference.\n- ⚠️ <b>Do not send as an album.</b>\n- When you're done, press 'Done & Add Prompt'.",
+"multi_image_button_add": "🖼️ Add Image (Done)",
+"multi_image_button_done": "✅ Done & Add Prompt",
+"multi_image_received": "✅ Image {count} of 4 received."
+
 
   }

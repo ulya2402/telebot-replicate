@@ -430,3 +430,20 @@ func (h *Handler) createStyleSelectionKeyboard(styles []config.StyleTemplate, la
 
 }
 
+// AWAL PERUBAHAN
+
+// Fungsi untuk membuat keyboard reply (di bawah layar) untuk alur multi-gambar
+func (h *Handler) createMultiImageReplyKeyboard(lang string) tgbotapi.ReplyKeyboardMarkup {
+	return tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(h.Localizer.Get(lang, "multi_image_button_done")),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(h.Localizer.Get(lang, "cancel_button")),
+		),
+	)
+}
+
+func (h *Handler) createRemoveReplyKeyboard() tgbotapi.ReplyKeyboardRemove {
+	return tgbotapi.NewRemoveKeyboard(true)
+}

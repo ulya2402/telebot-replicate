@@ -73,5 +73,8 @@
     "video_generating": "⏳ Generiere dein Video... Dies kann einige Minuten dauern.",
     "video_generation_failed": "❌ Videogenerierung fehlgeschlagen. Bitte versuche es später erneut.",
     "enter_prompt_for_video": "<b>{model_name}</b>\n\n<blockquote expandable>{model_description}</blockquote>\n\nDieses Modell benötigt ein Bild und einen Text-Prompt. Bitte sende ein Bild mit der Bewegungsbeschreibung in der Bildunterschrift.",
-    "video_prompt_error": "❌ Dieses Modell erfordert, dass du ein Bild mit einem Text-Prompt (als Bildunterschrift) sendest. Bitte versuche es erneut."
+    "video_prompt_error": "❌ Dieses Modell erfordert, dass du ein Bild mit einem Text-Prompt (als Bildunterschrift) sendest. Bitte versuche es erneut.",
+    "multi_image_button_add": "🖼️ Bild hinzufügen (Fertig)",
+"multi_image_button_done": "✅ Fertig & Prompt eingeben",
+"multi_image_received": "✅ Bild {count} von 4 erhalten."
   }

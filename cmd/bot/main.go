@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	log.Println("INFO: Starting the bot application...")
 	cfg := config.Load()
 	providers := config.LoadProviders("providers.json") // <-- BARU
 	models := config.LoadModels("models.json")
@@ -46,7 +47,19 @@ func main() {
 	updates := api.GetUpdatesChan(u)
 
 	for update := range updates {
+		log.Println("DEBUG: Received an update from Telegram")
+		if update.Message != nil {
+			log.Printf("DEBUG: Update is a Message: [%s]", update.Message.Text)
+		} else if update.CallbackQuery != nil {
+			log.Printf("DEBUG: Update is a CallbackQuery: [%s]", update.CallbackQuery.Data)
+		} else if update.PreCheckoutQuery != nil {
+			log.Printf("DEBUG: Update is a PreCheckoutQuery")
+		} else {
+			log.Printf("DEBUG: Update is of another type")
+		}
+
 		go handler.HandleUpdate(update)
 	}
+
 
 }

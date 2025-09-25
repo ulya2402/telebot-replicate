@@ -9,6 +9,7 @@
     pkgs.nodejs_20
     pkgs.nodePackages.nodemon
     pkgs.zip
+    pkgs.hexdump
   ];
   # Sets environment variables in the workspace
   env = {};

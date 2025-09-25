@@ -4,65 +4,67 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"html"
 	"io/ioutil" // <-- TAMBAHKAN
-	"net/http"  // <-- TAMBAHKAN
+	"log"
+	"net/http" // <-- TAMBAHKAN
+	"net/url"
 	"path/filepath" // <-- TAMBAHKAN
 	"strconv"
-	"telegram-ai-bot/internal/payments"
-	"net/url"
-	"sync"
 	"strings"
+	"sync"
 	"telegram-ai-bot/internal/config"
 	"telegram-ai-bot/internal/database"
 	"telegram-ai-bot/internal/localization"
+	"telegram-ai-bot/internal/payments"
 	"telegram-ai-bot/internal/services"
 	"time"
-	"html"
-	
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type PendingGeneration struct {
-	ModelID  string
-	Prompt   string
-	ImageURL string
+	ModelID   string
+	Prompt    string
+	ImageURL  string
+	ImageURLs []string // <-- BARU
+	StyleID   string   // <-- BARU
+	MessageID int      // <-- BARU
 }
 
 type Handler struct {
-	Bot             *tgbotapi.BotAPI
-	DB              *database.Client
-	Localizer       *localization.Localizer
-	Providers       []config.Provider
-	Models          []config.Model
-	PromptTemplates []config.PromptTemplate
-	Styles                []config.StyleTemplate  
-	Replicate       *services.ReplicateClient
-	userStates      map[int64]string
-	userStatesMutex sync.Mutex
-	Config          *config.Config
-	lastGeneratedURLs     map[int64][]string // <-- BARU: Untuk menyimpan URL RAW
-	lastGeneratedURLsMutex sync.Mutex 
-	PaymentHandler *payments.PaymentHandler
-	GroupHandler          *GroupHandler
-	pendingGenerations    map[int64]*PendingGeneration 
+	Bot                    *tgbotapi.BotAPI
+	DB                     *database.Client
+	Localizer              *localization.Localizer
+	Providers              []config.Provider
+	Models                 []config.Model
+	PromptTemplates        []config.PromptTemplate
+	Styles                 []config.StyleTemplate
+	Replicate              *services.ReplicateClient
+	userStates             map[int64]string
+	userStatesMutex        sync.Mutex
+	Config                 *config.Config
+	lastGeneratedURLs      map[int64][]string // <-- BARU: Untuk menyimpan URL RAW
+	lastGeneratedURLsMutex sync.Mutex
+	PaymentHandler         *payments.PaymentHandler
+	GroupHandler           *GroupHandler
+	pendingGenerations     map[int64]*PendingGeneration
 }
 
 func NewHandler(api *tgbotapi.BotAPI, db *database.Client, localizer *localization.Localizer, providers []config.Provider, models []config.Model, templates []config.PromptTemplate, styles []config.StyleTemplate, replicate *services.ReplicateClient, cfg *config.Config, paymentHandler *payments.PaymentHandler) *Handler {
 	h := &Handler{
-		Bot:               api,
-		DB:                db,
-		Localizer:         localizer,
-		Providers:         providers,
-		Models:            models,
-		PromptTemplates:   templates,
-		Styles:              styles, 
-		Replicate:         replicate,
-		userStates:        make(map[int64]string),
-		Config:            cfg,
-		lastGeneratedURLs: make(map[int64][]string),
-		PaymentHandler:    paymentHandler,
+		Bot:                api,
+		DB:                 db,
+		Localizer:          localizer,
+		Providers:          providers,
+		Models:             models,
+		PromptTemplates:    templates,
+		Styles:             styles,
+		Replicate:          replicate,
+		userStates:         make(map[int64]string),
+		Config:             cfg,
+		lastGeneratedURLs:  make(map[int64][]string),
+		PaymentHandler:     paymentHandler,
 		pendingGenerations: make(map[int64]*PendingGeneration),
 	}
 	h.GroupHandler = NewGroupHandler(h)
@@ -140,12 +142,16 @@ func (h *Handler) isUserSubscribed(userID int64) (bool, error) {
 }
 
 func (h *Handler) HandleUpdate(update tgbotapi.Update) {
+	log.Println("DEBUG: HandleUpdate function started")
 	switch {
 	case update.PreCheckoutQuery != nil:
+		log.Println("DEBUG: Routing update to HandlePreCheckoutQuery")
 		h.PaymentHandler.HandlePreCheckoutQuery(update.PreCheckoutQuery)
 	case update.Message != nil && update.Message.SuccessfulPayment != nil:
+		log.Println("DEBUG: Routing update to HandleSuccessfulPayment")
 		h.PaymentHandler.HandleSuccessfulPayment(update.Message)
 	case update.Message != nil:
+		log.Println("DEBUG: Routing update to message handlers (command or regular message)")
 		// Jika pesan datang dari grup, serahkan ke GroupHandler
 		if update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup() {
 			h.GroupHandler.HandleGroupMessage(update.Message)
@@ -159,16 +165,20 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 			h.handleMessage(update.Message)
 		}
 	case update.CallbackQuery != nil:
+		log.Println("DEBUG: Routing update to handleCallbackQuery")
 		h.handleCallbackQuery(update.CallbackQuery)
 	case update.MyChatMember != nil:
-        h.handleMyChatMemberUpdate(update.MyChatMember)
+		log.Println("DEBUG: Routing update to handleMyChatMemberUpdate")
+		h.handleMyChatMemberUpdate(update.MyChatMember)
+	default:
+		log.Println("DEBUG: Update received but not handled by any case")
 	}
 }
 
 func (h *Handler) handleCommand(message *tgbotapi.Message) {
+	log.Printf("DIAGNOSTIC: handleCommand triggered. Raw Text: [%s]", message.Text)
 	command := message.Command()
-
-	// Cek apakah perintah ini khusus admin
+	log.Printf("DIAGNOSTIC: Command parsed by library: [%s]", command)
 	isAdminCommand := command == "stats" || command == "addcredits" || command == "broadcast" || command == "broadcastgroup"
 	if isAdminCommand && !h.isAdmin(message.From.ID) {
 		msg := h.newReplyMessage(message, h.Localizer.Get("en", "permission_denied"))
@@ -211,12 +221,14 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	switch command {
 	case "start":
 		h.handleStart(message)
+	case "banana":
+		h.handleBananaCommand(message)
 	case "group":
 		h.handleGroupCommand(message)
 	case "help":
 		h.handleHelp(message)
 	case "faq":
-        h.handleFaq(message)
+		h.handleFaq(message)
 	case "img", "gen":
 		h.handleImageCommand(message)
 	case "vids":
@@ -236,7 +248,7 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	case "addcredits":
 		h.handleAddCredits(message)
 	case "broadcastgroup":
-        h.handleBroadcastGroup(message)
+		h.handleBroadcastGroup(message)
 	case "broadcast":
 		h.handleBroadcast(message)
 	case "settings":
@@ -248,13 +260,12 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 	case "upscaler":
 		h.handleUpscaler(message)
 	default:
+		log.Printf("DIAGNOSTIC: Command [%s] did not match any case. Sending 'Unknown command'.", command)
+
 		msg := h.newReplyMessage(message, "Unknown command")
 		h.Bot.Send(msg)
 	}
 }
-
-
-
 
 func (h *Handler) handleStats(message *tgbotapi.Message) {
 	stats, err := h.DB.GetStatistics()
@@ -262,19 +273,53 @@ func (h *Handler) handleStats(message *tgbotapi.Message) {
 		log.Printf("ERROR: Failed to get statistics: %v", err)
 		return
 	}
-	
+
 	lang := "en" // Statistik biasanya dalam bahasa Inggris
 	args := map[string]string{
 		"total_users":     strconv.Itoa(stats.TotalUsers),
 		"new_users_today": strconv.Itoa(stats.NewUsersToday),
 		"premium_users":   strconv.Itoa(stats.PremiumUsers),
 	}
-	
+
 	text := h.Localizer.Getf(lang, "stats_message", args)
 	msg := h.newReplyMessage(message, text)
 	msg.ParseMode = "Markdown"
 	h.Bot.Send(msg)
 }
+
+// AWAL PERUBAHAN
+func (h *Handler) handleBananaCommand(message *tgbotapi.Message) {
+	user, _ := h.getOrCreateUser(message.From)
+	lang := user.LanguageCode
+
+	// Set state pengguna untuk menandakan kita sedang menunggu gambar
+	h.userStatesMutex.Lock()
+	h.userStates[user.TelegramID] = "awaiting_banana_images"
+	h.userStatesMutex.Unlock()
+
+	// Siapkan tempat untuk menyimpan URL gambar
+	h.pendingGenerations[user.TelegramID] = &PendingGeneration{
+		ModelID:   "nano-banana", // Langsung set model ID
+		ImageURLs: []string{},
+	}
+
+	// Kirim pesan instruksi dengan keyboard reply
+	text := "🍌 Mode Input Gambar Nano Banana 🍌\n\nSilakan kirim foto Anda satu per satu (maksimal 4). Tekan 'Done' jika sudah selesai."
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ReplyMarkup = h.createMultiImageReplyKeyboard(lang)
+
+	// Kirim pesan dan periksa jika ada error
+	sentMsg, err := h.Bot.Send(msg)
+	if err != nil {
+		log.Printf("ERROR: Failed to send banana command reply: %v", err)
+		return
+	}
+
+	// Simpan ID pesan agar bisa di-update
+	h.pendingGenerations[user.TelegramID].MessageID = sentMsg.MessageID
+}
+
+// AKHIR PERUBAHAN
 
 func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 	lang := "en"
@@ -284,16 +329,16 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 		h.Bot.Send(msg)
 		return
 	}
-	
+
 	targetID, err1 := strconv.ParseInt(parts[0], 10, 64)
 	amount, err2 := strconv.Atoi(parts[1])
-	
+
 	if err1 != nil || err2 != nil {
 		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "addcredits_usage"))
 		h.Bot.Send(msg)
 		return
 	}
-	
+
 	targetUser, err := h.DB.GetUserByTelegramID(targetID)
 	if err != nil || targetUser == nil {
 		args := map[string]string{"user_id": parts[0]}
@@ -301,10 +346,10 @@ func (h *Handler) handleAddCredits(message *tgbotapi.Message) {
 		h.Bot.Send(msg)
 		return
 	}
-	
+
 	targetUser.PaidCredits += amount
 	h.DB.UpdateUser(targetUser)
-	
+
 	args := map[string]string{
 		"amount":  strconv.Itoa(amount),
 		"user_id": parts[0],
@@ -432,8 +477,9 @@ func (h *Handler) updateSettingsMessage(chatID int64, messageID int, user *datab
 	h.Bot.Send(msg)
 }
 
-
 func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+	log.Printf("DEBUG: Callback query received with data: [%s]", callback.Data)
+
 	parts := strings.Split(callback.Data, ":")
 	action := parts[0]
 	data := ""
@@ -448,9 +494,9 @@ func (h *Handler) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		From: callback.From,
 		Chat: &tgbotapi.Chat{ID: callback.Message.Chat.ID},
 	}
-if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
-        dummyMessage.MessageID = callback.Message.MessageID
-}
+	if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
+		dummyMessage.MessageID = callback.Message.MessageID
+	}
 
 	if strings.HasPrefix(action, "buy_stars") {
 		packageID := strings.Split(callback.Data, ":")[1]
@@ -489,36 +535,40 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		}
 	}
 
-
 	switch action {
+	case "style_select":
+		h.handleStyleSelection(callback, data)
+		return
+
+		// --- AKHIR PERUBAHAN ---
 	case "back_to_providers": // <-- AKSI BARU
-	h.userStatesMutex.Lock()
-	state, ok := h.userStates[callback.From.ID]
-	h.userStatesMutex.Unlock()
+		h.userStatesMutex.Lock()
+		state, ok := h.userStates[callback.From.ID]
+		h.userStatesMutex.Unlock()
 
-	if ok {
-		var modelType string
-		if strings.Contains(state, "image") {
-			modelType = "image"
-		} else if strings.Contains(state, "video") {
-			modelType = "video"
+		if ok {
+			var modelType string
+			if strings.Contains(state, "image") {
+				modelType = "image"
+			} else if strings.Contains(state, "video") {
+				modelType = "video"
+			}
+
+			if modelType != "" {
+				// Panggil helper baru untuk MENGEDIT pesan yang ada
+				h.showProviderMenu(callback.Message.Chat.ID, callback.From.ID, modelType, callback.Message.MessageID)
+				return
+			}
 		}
 
-		if modelType != "" {
-			// Panggil helper baru untuk MENGEDIT pesan yang ada
-			h.showProviderMenu(callback.Message.Chat.ID, callback.From.ID, modelType, callback.Message.MessageID)
-			return
+		// Fallback jika state tidak terdeteksi
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Request(deleteMsg)
+		dummyMessage := &tgbotapi.Message{
+			From: callback.From,
+			Chat: callback.Message.Chat,
 		}
-	}
-	
-	// Fallback jika state tidak terdeteksi
-	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
-	h.Bot.Request(deleteMsg)
-	dummyMessage := &tgbotapi.Message{
-		From: callback.From,
-		Chat: callback.Message.Chat,
-	}
-	h.handleStart(dummyMessage)
+		h.handleStart(dummyMessage)
 	case "provider_select": // <-- AKSI BARU
 		h.handleProviderSelection(callback, data)
 	case "model_page":
@@ -559,7 +609,7 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 
 		modelID := parts[1]
 		styleID := parts[2]
-		
+
 		// Panggil helper untuk kembali ke layar prompt.
 		// `isEdit` diatur ke true karena kita mengedit pesan "Advanced Settings".
 		h.showPromptEntryScreen(callback, modelID, styleID, true)
@@ -605,7 +655,7 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		// PERBAIKAN: Ambil semua bagian setelah "set_ar:"
 		// Ini akan memastikan "9:16" terbaca utuh
 		aspectRatioValue := strings.TrimPrefix(callback.Data, "set_ar:")
-		
+
 		user, _ := h.getOrCreateUser(callback.From)
 		user.AspectRatio = aspectRatioValue // Gunakan nilai yang sudah benar
 		h.DB.UpdateUser(user)
@@ -618,9 +668,9 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		h.DB.UpdateUser(user)
 		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
 	case "settings_back_to_main":
-        user, _ := h.getOrCreateUser(callback.From)
-        h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
-	
+		user, _ := h.getOrCreateUser(callback.From)
+		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+
 	case "main_menu_generate":
 		h.handleImageCommand(dummyMessage)
 	case "main_menu_generate_video":
@@ -631,22 +681,20 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		h.handleRemoveBg(dummyMessage)
 	case "main_menu_settings":
 		h.handleSettings(dummyMessage)
-	
+
 	case "main_menu_faq":
 		h.handleFaq(dummyMessage)
 
 	case "main_menu_language":
 		h.handleLang(dummyMessage)
-		
 
 	case "main_menu_help":
 		h.handleHelp(dummyMessage)
 
-
 	case "main_menu_referral":
 		h.handleReferral(dummyMessage)
-	
-	case "main_menu_topup": 
+
+	case "main_menu_topup":
 		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID)
 
 	case "download_raw": // <-- BARU
@@ -655,10 +703,10 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 	case "main_menu_back":
 		// Kembali ke menu utama dari halaman lain
 		h.handleStart(dummyMessage)
-	
+
 	case "topup_stars":
 		h.PaymentHandler.ShowStarsPackages(callback.Message.Chat.ID, callback.Message.MessageID)
-	
+
 	case "topup_manual":
 		h.PaymentHandler.ShowManualPaymentOptions(callback.Message.Chat.ID, callback.Message.MessageID)
 	case "topup_transfer_bank":
@@ -670,15 +718,59 @@ if callback.Message.Chat.IsGroup() || callback.Message.Chat.IsSuperGroup() {
 		h.PaymentHandler.ShowManualPaymentOptions(callback.Message.Chat.ID, callback.Message.MessageID)
 
 	case "faq_show":
-        h.handleFaqShow(callback, data)
-    case "faq_back":
-        h.handleFaqBack(callback)
+		h.handleFaqShow(callback, data)
+	case "faq_back":
+		h.handleFaqBack(callback)
 	case "style_confirm":
 		h.handleStyleCallback(callback, data)
 		return // Return agar tidak dilanjutkan ke switch di bawah
-	case "style_select":
-		h.handleStyleSelection(callback, data)
-		return // Return agar tidak dilanjutkan ke switch di bawah
+
+	case "multi_image_done":
+		user, _ := h.getOrCreateUser(callback.From)
+		lang := user.LanguageCode
+
+		h.userStatesMutex.Lock()
+		state, ok := h.userStates[user.TelegramID]
+		h.userStatesMutex.Unlock()
+
+		if !ok || !strings.HasPrefix(state, "awaiting_multi_image:") {
+			return
+		}
+
+		parts := strings.Split(state, ":")
+		if len(parts) < 3 {
+			return
+		}
+		modelID := parts[1]
+
+		h.userStatesMutex.Lock()
+		h.userStates[user.TelegramID] = "prompt_for:" + modelID
+		h.userStatesMutex.Unlock()
+
+		var selectedModel *config.Model
+		for _, m := range h.Models {
+			if m.ID == modelID {
+				selectedModel = &m
+				break
+			}
+		}
+		if selectedModel == nil {
+			return
+		}
+
+		args := map[string]string{
+			"model_name":        selectedModel.Name,
+			"model_description": selectedModel.Description,
+		}
+		text := h.Localizer.Getf(lang, "enter_prompt", args)
+
+		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+		msg.ParseMode = "HTML"
+		cancelKeyboard := h.createCancelFlowKeyboard(lang)
+		msg.ReplyMarkup = &cancelKeyboard
+		h.Bot.Send(msg)
+
+		return
 	case "topup_bmac":
 		h.PaymentHandler.ShowBMACPackages(callback.Message.Chat.ID, callback.Message.MessageID)
 	case "main_menu_upscaler":
@@ -784,7 +876,6 @@ func (h *Handler) handleProviderSelection(callback *tgbotapi.CallbackQuery, prov
 		return
 	}
 
-
 	// Filter model berdasarkan provider yang dipilih
 	var providerModels []config.Model
 	for _, m := range h.Models {
@@ -813,14 +904,14 @@ func (h *Handler) getUserLang(userID int64) string {
 }
 
 func (h *Handler) handleCancel(message *tgbotapi.Message) {
-	h.userStatesMutex.Lock()         // <-- DITAMBAHKAN: Mengunci sebelum mengakses
+	h.userStatesMutex.Lock() // <-- DITAMBAHKAN: Mengunci sebelum mengakses
 	defer h.userStatesMutex.Unlock()
 	if _, ok := h.userStates[message.From.ID]; ok {
 		delete(h.userStates, message.From.ID)
-		
+
 		user, _ := h.getOrCreateUser(message.From)
 		lang := user.LanguageCode
-		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "flow_cancelled"))		
+		msg := h.newReplyMessage(message, h.Localizer.Get(lang, "flow_cancelled"))
 		h.Bot.Send(msg)
 	}
 }
@@ -866,7 +957,6 @@ func (h *Handler) handleCancelCallback(callback *tgbotapi.CallbackQuery) {
 
 }
 
-
 func (h *Handler) showTemplates(callback *tgbotapi.CallbackQuery, page int) {
 	user, _ := h.getOrCreateUser(callback.From)
 	keyboard := h.createTemplateSelectionKeyboard(h.PromptTemplates, user.LanguageCode, page)
@@ -891,7 +981,6 @@ func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, temp
 	modelID := strings.TrimPrefix(state, "prompt_for:")
 	h.userStatesMutex.Unlock()
 
-
 	var selectedTemplate *config.PromptTemplate
 	for _, t := range h.PromptTemplates {
 		if t.ID == templateID {
@@ -914,7 +1003,6 @@ func (h *Handler) handleTemplateSelection(callback *tgbotapi.CallbackQuery, temp
 	h.Bot.Send(deleteMsg)
 }
 
-
 func (h *Handler) getFileURL(fileID string) (string, error) {
 	fileConfig := tgbotapi.FileConfig{FileID: fileID}
 	file, err := h.Bot.GetFile(fileConfig)
@@ -926,6 +1014,7 @@ func (h *Handler) getFileURL(fileID string) (string, error) {
 
 func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID string) {
 	user, err := h.getOrCreateUser(callback.From)
+
 	if err != nil {
 		return
 	}
@@ -987,8 +1076,6 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 		return
 	}
 
-
-
 	totalAvailableCredits := user.PaidCredits + user.FreeCredits
 	if totalAvailableCredits < selectedModel.Cost {
 		args := map[string]string{
@@ -1015,7 +1102,7 @@ func (h *Handler) handleModelSelection(callback *tgbotapi.CallbackQuery, modelID
 
 	// Panggil keyboard untuk memilih gaya, lalu kirim pesan. Selesai.
 	keyboard := h.createStyleSelectionKeyboard(h.Styles, lang)
-	
+
 	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard
@@ -1105,11 +1192,11 @@ func (h *Handler) triggerVideoGeneration(user *database.User, originalMessage *t
 
 // Tambahkan fungsi helper baru ini di mana saja di dalam handlers.go
 func (h *Handler) newReplyVideo(originalMessage *tgbotapi.Message, video tgbotapi.RequestFileData) tgbotapi.VideoConfig {
-    msg := tgbotapi.NewVideo(originalMessage.Chat.ID, video)
-    if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
-        msg.ReplyToMessageID = originalMessage.MessageID
-    }
-    return msg
+	msg := tgbotapi.NewVideo(originalMessage.Chat.ID, video)
+	if originalMessage.Chat.IsGroup() || originalMessage.Chat.IsSuperGroup() {
+		msg.ReplyToMessageID = originalMessage.MessageID
+	}
+	return msg
 }
 
 func (h *Handler) handleMessage(message *tgbotapi.Message) {
@@ -1124,8 +1211,169 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	user, err := h.getOrCreateUser(message.From)
 	if err != nil {
 		return
-	}	
+	}
 	lang := user.LanguageCode
+
+	if strings.HasPrefix(state, "awaiting_multi_image:") {
+		pending, genOk := h.pendingGenerations[user.TelegramID]
+		if !genOk {
+			return
+		}
+
+		doneButtonText := h.Localizer.Get(lang, "multi_image_button_done")
+		cancelButtonText := h.Localizer.Get(lang, "cancel_button")
+
+		if message.Text == doneButtonText {
+			stateParts := strings.Split(state, ":")
+			modelID := stateParts[1]
+
+			h.userStatesMutex.Lock()
+			h.userStates[user.TelegramID] = "prompt_for:" + modelID
+			h.userStatesMutex.Unlock()
+
+			// Hapus pesan instruksi lama jika ada
+			if pending.MessageID != 0 {
+				deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, pending.MessageID)
+				h.Bot.Send(deleteMsg)
+			}
+
+			text := "👍 Images accepted. Now enter your prompt."
+			msg := tgbotapi.NewMessage(message.Chat.ID, text)
+			msg.ReplyMarkup = h.createRemoveReplyKeyboard()
+			h.Bot.Send(msg)
+			return
+
+		} else if message.Text == cancelButtonText {
+			delete(h.pendingGenerations, user.TelegramID)
+			h.userStatesMutex.Lock()
+			delete(h.userStates, user.TelegramID)
+			h.userStatesMutex.Unlock()
+
+			msg := h.newReplyMessage(message, h.Localizer.Get(lang, "flow_cancelled"))
+			msg.ReplyMarkup = h.createRemoveReplyKeyboard()
+			h.Bot.Send(msg)
+			return
+
+		} else if message.Photo != nil && len(message.Photo) > 0 {
+			if len(pending.ImageURLs) >= 4 {
+				limitMsg := h.newReplyMessage(message, "You have reached the maximum limit of 4 images.")
+				h.Bot.Send(limitMsg)
+				return
+			}
+
+			bestPhoto := message.Photo[len(message.Photo)-1]
+			imageURL, err := h.getFileURL(bestPhoto.FileID)
+			if err != nil {
+				log.Printf("ERROR: Failed to get file URL for multi-image: %v", err)
+				return
+			}
+			pending.ImageURLs = append(pending.ImageURLs, imageURL)
+
+			// Balas ke gambar pengguna
+			args := map[string]string{"count": strconv.Itoa(len(pending.ImageURLs))}
+			notifText := h.Localizer.Getf(lang, "multi_image_received", args)			
+			replyMsg := h.newReplyMessage(message, notifText)
+			h.Bot.Send(replyMsg)
+			return
+		}
+		return
+	}
+
+
+	// --- LOGIKA BARU ---
+	if strings.HasPrefix(state, "awaiting_multi_image:") {
+		pending, genOk := h.pendingGenerations[user.TelegramID]
+		if !genOk {
+			return // Data sementara tidak ditemukan, hentikan
+		}
+
+		doneButtonText := h.Localizer.Get(lang, "multi_image_button_done")
+		cancelButtonText := h.Localizer.Get(lang, "cancel_button")
+
+		if message.Text == doneButtonText {
+			stateParts := strings.Split(state, ":")
+			modelID := stateParts[1]
+
+			h.userStatesMutex.Lock()
+			h.userStates[user.TelegramID] = "prompt_for:" + modelID
+			h.userStatesMutex.Unlock()
+
+			var selectedModel *config.Model
+			for _, m := range h.Models {
+				if m.ID == modelID {
+					selectedModel = &m
+					break
+				}
+			}
+			if selectedModel == nil {
+				return
+			}
+
+			// Hapus pesan instruksi "kirim foto"
+			deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, pending.MessageID)
+			h.Bot.Send(deleteMsg)
+
+			// Kirim pesan baru untuk meminta prompt dan hapus keyboard
+			args := map[string]string{"model_name": selectedModel.Name, "model_description": selectedModel.Description}
+			text := h.Localizer.Getf(lang, "enter_prompt", args)
+			msg := tgbotapi.NewMessage(message.Chat.ID, text)
+			msg.ReplyMarkup = h.createRemoveReplyKeyboard()
+			h.Bot.Send(msg)
+			return
+
+		} else if message.Text == cancelButtonText {
+			delete(h.pendingGenerations, user.TelegramID)
+			h.userStatesMutex.Lock()
+			delete(h.userStates, user.TelegramID)
+			h.userStatesMutex.Unlock()
+
+			msg := h.newReplyMessage(message, h.Localizer.Get(lang, "flow_cancelled"))
+			msg.ReplyMarkup = h.createRemoveReplyKeyboard()
+			h.Bot.Send(msg)
+			return
+
+		} else if message.Photo != nil && len(message.Photo) > 0 {
+			if len(pending.ImageURLs) >= 4 {
+				return // Abaikan jika sudah mencapai batas
+			}
+
+			bestPhoto := message.Photo[len(message.Photo)-1]
+			imageURL, err := h.getFileURL(bestPhoto.FileID)
+			if err != nil {
+				log.Printf("ERROR: Failed to get file URL for multi-image: %v", err)
+				return
+			}
+			pending.ImageURLs = append(pending.ImageURLs, imageURL)
+
+			deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID)
+			h.Bot.Request(deleteMsg)
+
+			stateParts := strings.Split(state, ":")
+			modelID := stateParts[1]
+			var selectedModel *config.Model
+			for _, m := range h.Models {
+				if m.ID == modelID {
+					selectedModel = &m
+					break
+				}
+			}
+
+			// Update pesan instruksi dengan jumlah gambar terbaru
+			args := map[string]string{
+				"model_name": selectedModel.Name,
+				"count":      strconv.Itoa(len(pending.ImageURLs)),
+				"max":        "4",
+			}
+			text := h.Localizer.Getf(lang, "multi_image_prompt", args)
+			editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, pending.MessageID, text)
+			editMsg.ParseMode = "HTML"
+			h.Bot.Send(editMsg)
+			return
+		}
+		// Abaikan input teks lain yang tidak relevan
+		return
+	}
+	// --- AKHIR LOGIKA BARU ---
 
 	if state == "awaiting_exchange_amount" {
 		diamondsToBuy, err := strconv.Atoi(message.Text)
@@ -1141,8 +1389,8 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		if totalCredits < creditsNeeded {
 			args := map[string]string{
 				"diamonds_to_buy": strconv.Itoa(diamondsToBuy),
-				"credits_needed":    strconv.Itoa(creditsNeeded),
-				"credits_balance":   strconv.Itoa(totalCredits),
+				"credits_needed":  strconv.Itoa(creditsNeeded),
+				"credits_balance": strconv.Itoa(totalCredits),
 			}
 			msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "exchange_not_enough_credits", args))
 			h.Bot.Send(msg)
@@ -1157,7 +1405,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 			user.FreeCredits = 0
 			user.PaidCredits -= creditsToDeduct
 		}
-		
+
 		user.Diamonds += diamondsToBuy
 		h.DB.UpdateUser(user)
 
@@ -1166,20 +1414,20 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		h.userStatesMutex.Unlock()
 
 		args := map[string]string{
-			"credits_spent":       strconv.Itoa(creditsNeeded),
-			"diamonds_gained":     strconv.Itoa(diamondsToBuy),
+			"credits_spent":        strconv.Itoa(creditsNeeded),
+			"diamonds_gained":      strconv.Itoa(diamondsToBuy),
 			"new_diamonds_balance": strconv.Itoa(user.Diamonds),
 		}
 		msg := h.newReplyMessage(message, h.Localizer.Getf(lang, "exchange_success", args))
 		h.Bot.Send(msg)
 		return
 	}
-	
+
 	if strings.HasPrefix(state, "prompt_for_video:") {
 		modelID := strings.TrimPrefix(state, "prompt_for_video:")
-		
+
 		var prompt, imageURL string
-		
+
 		if message.Photo != nil && len(message.Photo) > 0 {
 			// Jika ada foto, gunakan caption sebagai prompt
 			bestPhoto := message.Photo[len(message.Photo)-1]
@@ -1204,8 +1452,6 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		// =================== PERUBAHAN SELESAI DI SINI ===================
 		return
 	}
-
-
 
 	if state == "awaiting_image_for_removebg" {
 		if message.Photo == nil || len(message.Photo) == 0 {
@@ -1238,12 +1484,20 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
-
 	if strings.HasPrefix(state, "prompt_for:") {
-		// Format state baru: "prompt_for:model_id:style_id"
+		pending, isMultiImageFlow := h.pendingGenerations[user.TelegramID]
+		if isMultiImageFlow {
+			modelID := strings.Split(state, ":")[1]
+			prompt := message.Text
+			h.triggerImageGeneration(user, message, modelID, prompt, pending.ImageURLs)
+			delete(h.pendingGenerations, user.TelegramID)
+			return
+		}
 		parts := strings.Split(state, ":")
-		if len(parts) < 3 { return } // Validasi format state
-		
+		if len(parts) < 3 {
+			return
+		} // Validasi format state
+
 		modelID := parts[1]
 		styleID := parts[2]
 
@@ -1264,7 +1518,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		if prompt == "" {
 			return
 		}
-		
+
 		// Temukan suffix prompt dari style yang dipilih
 		var promptSuffix string
 		for _, style := range h.Styles {
@@ -1273,7 +1527,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 				break
 			}
 		}
-		
+
 		finalPrompt := prompt + promptSuffix
 
 		// Panggil triggerImageGeneration dengan prompt yang sudah dimodifikasi
@@ -1282,7 +1536,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	} else if strings.HasPrefix(state, "edit_setting:") {
 		parts := strings.Split(strings.TrimPrefix(state, "edit_setting:"), ":")
 		modelID, paramName := parts[0], parts[1]
-		
+
 		var selectedModel *config.Model
 		var selectedParam *config.Parameter
 		for _, m := range h.Models {
@@ -1301,7 +1555,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		if selectedModel == nil || selectedParam == nil {
 			return
 		}
-		
+
 		var customSettings map[string]interface{}
 		if user.CustomSettings != "" {
 			json.Unmarshal([]byte(user.CustomSettings), &customSettings)
@@ -1340,7 +1594,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 			h.Bot.Send(msg)
 			return
 		}
-		
+
 		customSettings[paramName] = parsedValue
 
 		settingsJSON, _ := json.Marshal(customSettings)
@@ -1356,9 +1610,9 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		msg.ParseMode = "HTML"
 		msg.ReplyMarkup = &keyboard
 		h.Bot.Send(msg)
-		
+
 		// Hapus pesan "Please enter a new value..."
-		deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID - 1)
+		deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID-1)
 		h.Bot.Request(deleteMsg)
 	}
 }
@@ -1401,7 +1655,7 @@ func (h *Handler) handleStyleCallback(callback *tgbotapi.CallbackQuery, action s
 		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
 		h.Bot.Request(deleteMsg)
 		h.triggerImageGeneration(user, callback.Message, pending.ModelID, pending.Prompt, pending.ImageURL)
-	
+
 	case "show_styles":
 		text := "Silakan pilih gaya visual yang Anda inginkan:"
 		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
@@ -1421,6 +1675,7 @@ func (h *Handler) handleStyleCallback(callback *tgbotapi.CallbackQuery, action s
 
 func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID string) {
 	userID := callback.From.ID
+
 	h.userStatesMutex.Lock()
 	state, ok := h.userStates[userID]
 	if !ok || !strings.HasPrefix(state, "awaiting_style_for:") {
@@ -1428,9 +1683,10 @@ func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID
 		return
 	}
 	modelID := strings.TrimPrefix(state, "awaiting_style_for:")
-	
+
 	h.userStates[userID] = fmt.Sprintf("prompt_for:%s:%s", modelID, styleID)
 	h.userStatesMutex.Unlock()
+
 
 	user, _ := h.getOrCreateUser(callback.From)
 	lang := user.LanguageCode
@@ -1442,8 +1698,45 @@ func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID
 			break
 		}
 	}
-	if selectedModel == nil { return }
-	
+	if selectedModel == nil {
+		return
+	}
+
+
+	if selectedModel.AcceptsMultipleImages {
+		h.userStatesMutex.Lock()
+		h.userStates[user.TelegramID] = fmt.Sprintf("awaiting_multi_image:%s:%s", modelID, styleID)
+		h.userStatesMutex.Unlock()
+
+		h.pendingGenerations[user.TelegramID] = &PendingGeneration{
+			ModelID:   modelID,
+			StyleID:   styleID,
+			ImageURLs: []string{},
+		}
+
+		// Kirim pesan baru dengan keyboard reply
+		args := map[string]string{
+			"model_name": selectedModel.Name,
+			"count":      "0",
+			"max":        "4",
+		}
+		text := h.Localizer.Getf(lang, "multi_image_prompt", args)
+		msg := tgbotapi.NewMessage(user.TelegramID, text)
+		msg.ParseMode = "HTML"
+		keyboard := h.createMultiImageReplyKeyboard(lang)
+		msg.ReplyMarkup = keyboard
+
+		// Simpan message ID dari pesan baru ini untuk di-update nanti
+		sentMsg, _ := h.Bot.Send(msg)
+		h.pendingGenerations[user.TelegramID].MessageID = sentMsg.MessageID
+
+		// Hapus pesan lama yang berisi tombol style
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Send(deleteMsg)
+		return
+	}
+	// --- AKHIR LOGIKA RENCANA B ---
+
 	var styleName string
 	for _, style := range h.Styles {
 		if style.ID == styleID {
@@ -1460,7 +1753,7 @@ func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID
 	if selectedModel.Description != "" {
 		mainText += fmt.Sprintf("\n\n<blockquote expandable>%s</blockquote>", selectedModel.Description)
 	}
-	
+
 	var warningText string
 	if user.NumOutputs > 1 && !selectedModel.ConfigurableNumOutputs {
 		warningText = h.Localizer.Get(lang, "single_output_warning")
@@ -1488,12 +1781,12 @@ func (h *Handler) handleStyleSelection(callback *tgbotapi.CallbackQuery, styleID
 	}
 	cancelButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow")
 	keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(cancelButton))
-	
+
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
 	msg.ReplyMarkup = &keyboard
-	
+
 	h.Bot.Send(msg)
-	
+
 	deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
 	h.Bot.Send(deleteMsg)
 }
@@ -1520,11 +1813,14 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	}
 
 	var finalImageURL string
+	var finalImageURLs []string
 	var customParams map[string]interface{}
 
 	if len(imageURLAndParams) > 0 {
 		if url, ok := imageURLAndParams[0].(string); ok {
 			finalImageURL = url
+		} else if urls, ok := imageURLAndParams[0].([]string); ok {
+			finalImageURLs = urls
 		}
 	}
 	if len(imageURLAndParams) > 1 {
@@ -1581,7 +1877,7 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	if numOutputs == 0 {
 		numOutputs = 1
 	}
-	
+
 	// Untuk model spesial, selalu atur numOutputs ke 1
 	if modelID == "remove-background" || modelID == "recraft-upscaler" {
 		numOutputs = 1
@@ -1614,8 +1910,17 @@ func (h *Handler) triggerImageGeneration(user *database.User, originalMessage *t
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	var imageUrls []string
+	var err error
+
+	// Panggil Replicate dengan parameter yang sesuai
+	if len(finalImageURLs) > 0 {
+		imageUrls, err = h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, "", selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams, finalImageURLs)
+	} else {
+		imageUrls, err = h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams)
+	}
+
 	// Panggil Replicate dengan numOutputs yang sudah divalidasi
-	imageUrls, err := h.Replicate.CreatePrediction(ctx, selectedModel.ReplicateID, prompt, finalImageURL, selectedModel.ImageParameterName, aspectRatio, numOutputs, customParams)
 
 	if err != nil || len(imageUrls) == 0 {
 		failMsg := h.newReplyMessage(originalMessage, h.Localizer.Get(lang, "generation_failed"))
@@ -1739,7 +2044,7 @@ func (h *Handler) handleUpscaler(message *tgbotapi.Message) {
 
 	var upscalerModel *config.Model
 	for _, m := range h.Models {
-        // --- PERUBAHAN DI SINI: Cari ID model baru ---
+		// --- PERUBAHAN DI SINI: Cari ID model baru ---
 		if m.ID == "recraft-upscaler" {
 			upscalerModel = &m
 			break
@@ -1778,7 +2083,6 @@ func (h *Handler) handleUpscaler(message *tgbotapi.Message) {
 	h.Bot.Send(msg)
 }
 
-
 func (h *Handler) navigateModels(callback *tgbotapi.CallbackQuery, providerID string, page int) {
 	user, _ := h.getOrCreateUser(callback.From)
 
@@ -1807,7 +2111,7 @@ func (h *Handler) handleStart(message *tgbotapi.Message) {
 	if user == nil {
 		// Jika pengguna tidak ada, ini adalah pengguna baru.
 		var referrerID int64
-		
+
 		// Cek dan proses ID referral SEBELUM membuat pengguna
 		if strings.HasPrefix(message.CommandArguments(), "ref_") {
 			parsedID, err := strconv.ParseInt(strings.TrimPrefix(message.CommandArguments(), "ref_"), 10, 64)
@@ -1819,15 +2123,15 @@ func (h *Handler) handleStart(message *tgbotapi.Message) {
 
 		// Siapkan data pengguna baru, termasuk ID referral jika ada
 		newUser := database.User{
-			TelegramID:   message.From.ID,
-			Username:     message.From.UserName,
+			TelegramID:           message.From.ID,
+			Username:             message.From.UserName,
 			PaidCredits:          0, // Pengguna baru mulai dengan 0 kredit berbayar
 			FreeCredits:          5,
-			LastFreeCreditsReset:    time.Now(),
-			LanguageCode: "en",
-			AspectRatio:  "1:1",
-			NumOutputs:   1,
-			ReferrerID:   referrerID, // ID referral langsung dimasukkan di sini
+			LastFreeCreditsReset: time.Now(),
+			LanguageCode:         "en",
+			AspectRatio:          "1:1",
+			NumOutputs:           1,
+			ReferrerID:           referrerID, // ID referral langsung dimasukkan di sini
 		}
 
 		// Buat pengguna baru di database
@@ -1836,7 +2140,7 @@ func (h *Handler) handleStart(message *tgbotapi.Message) {
 			log.Printf("ERROR: Failed to create user on start: %v", err)
 			return
 		}
-		
+
 		if referrerID != 0 {
 			log.Printf("INFO: User %d created with referral from %d", user.TelegramID, referrerID)
 		}
@@ -1863,7 +2167,7 @@ func (h *Handler) handleHelp(message *tgbotapi.Message) {
 	lang := user.LanguageCode
 	text := h.Localizer.Get(lang, "help")
 	msg := h.newReplyMessage(message, text)
-	keyboard := h.createAddToGroupKeyboard(lang, h.Bot.Self.UserName) 
+	keyboard := h.createAddToGroupKeyboard(lang, h.Bot.Self.UserName)
 	msg.ReplyMarkup = &keyboard
 	msg.ParseMode = "html"
 	h.Bot.Send(msg)
@@ -2025,13 +2329,11 @@ func (h *Handler) getOrCreateUser(tgUser *tgbotapi.User) (*database.User, error)
 func (h *Handler) handleImageCommand(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
 
-
 	h.userStatesMutex.Lock()
 	h.userStates[user.TelegramID] = "awaiting_image_provider"
 	h.userStatesMutex.Unlock()
 
 	h.showProviderMenu(message.Chat.ID, user.TelegramID, "image")
-
 
 }
 
@@ -2100,54 +2402,54 @@ func (h *Handler) handleRawDownload(callback *tgbotapi.CallbackQuery) {
 }
 
 func (h *Handler) handleFaq(message *tgbotapi.Message) {
-    user, _ := h.getOrCreateUser(message.From)
-    lang := user.LanguageCode
-    text := h.Localizer.Get(lang, "faq_title")
+	user, _ := h.getOrCreateUser(message.From)
+	lang := user.LanguageCode
+	text := h.Localizer.Get(lang, "faq_title")
 
-    msg := h.newReplyMessage(message, text)
-    msg.ParseMode = "Markdown"
-    keyboard := h.createFaqKeyboard(lang)
-    msg.ReplyMarkup = &keyboard
-    h.Bot.Send(msg)
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "Markdown"
+	keyboard := h.createFaqKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
 }
 
 func (h *Handler) handleFaqShow(callback *tgbotapi.CallbackQuery, questionID string) {
-    user, _ := h.getOrCreateUser(callback.From)
-    lang := user.LanguageCode
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
 
-    // 1. Ambil teks pertanyaan dari tombol yang diklik
-    questionKey := fmt.Sprintf("faq_%s_button", questionID)
-    questionText := h.Localizer.Get(lang, questionKey)
+	// 1. Ambil teks pertanyaan dari tombol yang diklik
+	questionKey := fmt.Sprintf("faq_%s_button", questionID)
+	questionText := h.Localizer.Get(lang, questionKey)
 
-    // 2. Ambil teks jawabannya
-    answerKey := fmt.Sprintf("faq_%s_answer", questionID)
-    answerText := h.Localizer.Get(lang, answerKey)
+	// 2. Ambil teks jawabannya
+	answerKey := fmt.Sprintf("faq_%s_answer", questionID)
+	answerText := h.Localizer.Get(lang, answerKey)
 
-    // 3. Gabungkan pertanyaan dan jawaban jadi satu pesan
-    // Format:
-    // *Pertanyaan*
-    //
-    // Jawaban
-    combinedText := fmt.Sprintf("*%s*\n\n%s", questionText, answerText)
+	// 3. Gabungkan pertanyaan dan jawaban jadi satu pesan
+	// Format:
+	// *Pertanyaan*
+	//
+	// Jawaban
+	combinedText := fmt.Sprintf("*%s*\n\n%s", questionText, answerText)
 
-    // 4. Kirim pesan yang sudah digabung
-    msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, combinedText)
-    msg.ParseMode = "Markdown"
-    keyboard := h.createFaqAnswerKeyboard(lang)
-    msg.ReplyMarkup = &keyboard
-    h.Bot.Send(msg)
+	// 4. Kirim pesan yang sudah digabung
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, combinedText)
+	msg.ParseMode = "Markdown"
+	keyboard := h.createFaqAnswerKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
 }
 
 func (h *Handler) handleFaqBack(callback *tgbotapi.CallbackQuery) {
-    user, _ := h.getOrCreateUser(callback.From)
-    lang := user.LanguageCode
-    text := h.Localizer.Get(lang, "faq_title")
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+	text := h.Localizer.Get(lang, "faq_title")
 
-    msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
-    msg.ParseMode = "Markdown"
-    keyboard := h.createFaqKeyboard(lang)
-    msg.ReplyMarkup = &keyboard
-    h.Bot.Send(msg)
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "Markdown"
+	keyboard := h.createFaqKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
 }
 
 // Ditambahkan: Fungsi untuk menangani saat bot join/leave grup
@@ -2275,7 +2577,7 @@ func (h *Handler) handleOpenAdvancedSettings(callback *tgbotapi.CallbackQuery, m
 	}
 
 	keyboard, text := h.createAdvancedSettingsKeyboard(lang, selectedModel, user)
-	
+
 	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
 	msg.ParseMode = "HTML"
 	msg.ReplyMarkup = &keyboard
@@ -2334,9 +2636,9 @@ func (h *Handler) handleSelectAdvancedSetting(callback *tgbotapi.CallbackQuery, 
 		backCallback := fmt.Sprintf("adv_setting_open:%s", modelID)
 		backButton := tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), backCallback)
 		keyboardRows = append(keyboardRows, tgbotapi.NewInlineKeyboardRow(backButton))
-		
+
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
-		
+
 		msgText := fmt.Sprintf("Select a value for <b>%s</b>:", selectedParam.Label)
 		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, msgText)
 		msg.ParseMode = "HTML"
@@ -2353,13 +2655,13 @@ func (h *Handler) handleSelectAdvancedSetting(callback *tgbotapi.CallbackQuery, 
 		if selectedParam.Description != "" {
 			promptText.WriteString(fmt.Sprintf("\n\n<i>%s</i>", selectedParam.Description))
 		}
-		
+
 		msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, promptText.String())
 		msg.ParseMode = "HTML"
-		
+
 		cancelKeyboard := h.createCancelFlowKeyboard(lang)
 		msg.ReplyMarkup = &cancelKeyboard
-		
+
 		h.Bot.Send(msg)
 	}
 }
@@ -2396,7 +2698,7 @@ func (h *Handler) handleSetOption(callback *tgbotapi.CallbackQuery, modelID, par
 		log.Printf("WARN: Parameter %s for model %s not found in handleSetOption", paramName, modelID)
 		return
 	}
-	
+
 	// Konversi nilai berdasarkan tipe data yang ditemukan
 	var parsedValue interface{}
 	switch targetParamType {
@@ -2488,7 +2790,7 @@ func (h *Handler) showPromptEntryScreen(callback *tgbotapi.CallbackQuery, modelI
 		msg.ParseMode = "HTML"
 		msg.ReplyMarkup = &keyboard
 		h.Bot.Send(msg)
-		
+
 		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
 		h.Bot.Send(deleteMsg)
 	}
@@ -2503,8 +2805,6 @@ func (h *Handler) handleVideoCommand(message *tgbotapi.Message) {
 
 	h.showProviderMenu(message.Chat.ID, user.TelegramID, "video")
 
-
-	
 }
 
 func (h *Handler) handleExchangeCommand(message *tgbotapi.Message) {
@@ -2532,8 +2832,7 @@ func (h *Handler) handleExchangeCommand(message *tgbotapi.Message) {
 	h.Bot.Send(msg)
 }
 
-
-func (h *Handler) showProviderMenu(chatID int64, userID int64, modelType string, messageID... int) {
+func (h *Handler) showProviderMenu(chatID int64, userID int64, modelType string, messageID ...int) {
 	user, _ := h.getOrCreateUser(&tgbotapi.User{ID: userID})
 	lang := user.LanguageCode
 
