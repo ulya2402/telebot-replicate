@@ -234,6 +234,47 @@
       ]
     },
     {
+      "id": "wan-2.2-image",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Wan 2.2",
+      "replicate_id": "prunaai/wan-2.2-image",
+      "tier": "standard",
+      "cost": 8,
+      "enabled": true,
+      "accepts_image_input": false,
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "This model generates beautiful cinematic 2 megapixel images in 3-4 seconds.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 180,
+          "min": 1,
+          "max": 100
+      }
+      ]
+    },
+    {
       "id": "gen4-image",
       "type": "image",
       "diamond_cost": 0,

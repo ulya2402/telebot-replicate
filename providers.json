@@ -33,5 +33,10 @@
         "id": "qwen",
         "name": "Qwen Image",
         "description": "An image generation foundation model in the Qwen series that achieves significant advances in complex text rendering."
+    }, 
+    {
+        "id": "prunaai",
+        "name": "Wan AI",
+        "description": "This model generates beautiful cinematic 2 megapixel images in 3-4 seconds"
     }
 ]
