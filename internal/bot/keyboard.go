@@ -176,18 +176,6 @@ func (h *Handler) createAspectRatioKeyboard(lang string) tgbotapi.InlineKeyboard
 			tgbotapi.NewInlineKeyboardButtonData("3:4 (Classic)", "set_ar:3:4"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("3:2 (Photo)", "set_ar:3:2"),
-			tgbotapi.NewInlineKeyboardButtonData("2:3 (Photo)", "set_ar:2:3"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("5:4 (Vintage)", "set_ar:5:4"),
-			tgbotapi.NewInlineKeyboardButtonData("4:5 (Vintage)", "set_ar:4:5"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("21:9 (Widescreen)", "set_ar:21:9"),
-			tgbotapi.NewInlineKeyboardButtonData("9:21 (Widescreen)", "set_ar:9:21"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "settings_back_to_main"),
 		),
 	)
