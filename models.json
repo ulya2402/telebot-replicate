@@ -417,6 +417,39 @@
       ]
     },
     {
+      "id": "nano-banana-pro",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Nano Banana Pro 2K",
+      "replicate_id": "google/nano-banana-pro",
+      "tier": "standard",
+      "cost": 2,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "image_parameter_name": "image_input",
+      "configurable_aspect_ratio": true,
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description": "Google's state of the art image generation and editing model 🍌🍌.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4"
+          ]
+        }
+      ]
+    },
+    {
       "id": "photon-flash",
       "type": "image",
       "diamond_cost": 0,
@@ -554,6 +587,135 @@
           "default": "2",
           "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
           "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
+    },
+    {
+      "id": "flux-2-dev",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Flux 2 Dev",
+      "replicate_id": "black-forest-labs/flux-2-dev",
+      "tier": "premium",
+      "cost": 1,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "configurable_aspect_ratio": true,
+      "image_parameter_name": "input_images",
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description":"Quality image generation and editing with support for reference images.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "safety_tolerance",
+          "label": "Safety Tolerance",
+          "type": "integer",
+          "default": "2",
+          "description": "Safety tolerance, 0 is most strict and 6 is most permissive. 2 is currently the maximum allowed when input images are used.",
+          "options": ["1", "2", "3", "4", "5"]
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
+    },
+    {
+      "id": "flux-2-pro",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Flux 2 Pro 4MP",
+      "replicate_id": "black-forest-labs/flux-2-pro",
+      "tier": "premium",
+      "cost": 1,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "configurable_aspect_ratio": true,
+      "image_parameter_name": "input_images",
+      "resolution": "4 MP",
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description":"Quality image generation and editing with support for reference images.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "resolution",
+          "label": "resolution",
+          "type": "string",
+          "default": "4 MP",
+          "description": "Choose the output aspect ratio."
+        },
+        {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        }
+      ]
+    },
+    {
+      "id": "flux-2-flex",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Flux 2 Flex 4MP",
+      "replicate_id": "black-forest-labs/flux-2-flex",
+      "tier": "premium",
+      "cost": 1,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "configurable_aspect_ratio": true,
+      "image_parameter_name": "input_images",
+      "resolution": "4 MP",
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description":"Max-quality image generation and editing.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
+        },
+        {
+          "name": "resolution",
+          "label": "resolution",
+          "type": "string",
+          "default": "4 MP",
+          "description": "Choose the output aspect ratio."
         },
         {
           "name": "seed",
