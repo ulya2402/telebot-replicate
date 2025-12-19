@@ -847,8 +847,8 @@ case "dash_img_clear":
 		h.PaymentHandler.ShowTopUpOptions(callback.Message.Chat.ID, callback.Message.MessageID)
 	case "topup_back_to_manual":
 		h.PaymentHandler.ShowManualPaymentOptions(callback.Message.Chat.ID, callback.Message.MessageID)
-	case "topup_bmac":
-		h.PaymentHandler.ShowBMACPackages(callback.Message.Chat.ID, callback.Message.MessageID)
+	//case "topup_bmac":
+	//	h.PaymentHandler.ShowBMACPackages(callback.Message.Chat.ID, callback.Message.MessageID)
 
 	case "faq_show":
 		h.handleFaqShow(callback, data)

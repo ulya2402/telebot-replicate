@@ -252,9 +252,9 @@ func (ph *PaymentHandler) ShowManualPaymentOptions(chatID int64, messageID int) 
 	lang := ph.getUserLang(chatID)
 	text := ph.Localizer.Get(lang, "topup_manual_select_method")
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "button_bmac"), "topup_bmac"),
-		),
+		///tgbotapi.NewInlineKeyboardRow(
+			///tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "button_bmac"), "topup_bmac"),
+		///),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(ph.Localizer.Get(lang, "button_manual_transfer"), "topup_transfer_bank"),
 		),
