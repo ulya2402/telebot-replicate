@@ -212,7 +212,7 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_upscaler"), "main_menu_upscaler"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_settings"), "main_menu_settings"),
+			///tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_settings"), "main_menu_settings"),
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_language"), "main_menu_language"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -434,4 +434,122 @@ func (h *Handler) createMultiImageReplyKeyboard(lang string) tgbotapi.ReplyKeybo
 
 func (h *Handler) createRemoveReplyKeyboard() tgbotapi.ReplyKeyboardRemove {
 	return tgbotapi.NewRemoveKeyboard(true)
+}
+
+// --- PEMBARUAN 2: Integrasi tombol parameter ke Dashboard ---
+
+func (h *Handler) createGenerationDashboardKeyboard(lang string, model config.Model, user *database.User, imageCount int) tgbotapi.InlineKeyboardMarkup {
+	var allButtons []tgbotapi.InlineKeyboardButton
+
+	// 1. Tombol Aspect Ratio (Jika Configurable)
+	if model.ConfigurableAspectRatio {
+		// Tanpa emoji, hanya teks nilai (misal: "16:9") atau label "Aspect Ratio"
+		// Agar rapi 2 kolom, kita pakai format "Label: Value" yang pendek
+		btnText := fmt.Sprintf("Aspect Ratio: %s", user.AspectRatio)
+		allButtons = append(allButtons, tgbotapi.NewInlineKeyboardButtonData(btnText, "dash_ar_menu"))
+	}
+
+	// 2. Tombol Jumlah Output (Jika Configurable)
+	if model.ConfigurableNumOutputs {
+		btnText := fmt.Sprintf("Quantity: %d", user.NumOutputs)
+		allButtons = append(allButtons, tgbotapi.NewInlineKeyboardButtonData(btnText, "dash_num_menu"))
+	}
+
+	// 3. Tombol Input Gambar (Jika Supported)
+	if model.AcceptsImageInput {
+		addText := "Add Image"
+		if imageCount > 0 {
+			addText = fmt.Sprintf("Add Image (%d)", imageCount)
+		}
+		allButtons = append(allButtons, tgbotapi.NewInlineKeyboardButtonData(addText, "dash_img_add"))
+
+		if imageCount > 0 {
+			allButtons = append(allButtons, tgbotapi.NewInlineKeyboardButtonData("Clear Images", "dash_img_clear"))
+		}
+	}
+
+	// 4. Tombol Parameter Lainnya (Dynamic)
+	if len(model.Parameters) > 0 {
+		for _, param := range model.Parameters {
+			// FIX BUG NANO BANANA:
+			// Jika model punya ConfigurableAspectRatio=true DAN parameter bernama 'aspect_ratio',
+			// lewati parameter ini agar tombol tidak ganda.
+			if param.Name == "aspect_ratio" && model.ConfigurableAspectRatio {
+				continue
+			}
+			// Skip parameter num_outputs jika sudah ada tombol quantity
+			if param.Name == "num_outputs" && model.ConfigurableNumOutputs {
+				continue
+			}
+
+			// Buat tombol tanpa emoji
+			btnText := param.Label // Cukup nama labelnya, misal "Seed", "Style", dll.
+			callback := fmt.Sprintf("adv_setting_select:%s:%s", model.ID, param.Name)
+			allButtons = append(allButtons, tgbotapi.NewInlineKeyboardButtonData(btnText, callback))
+		}
+	}
+
+	// 5. Susun menjadi Grid (2 Kolom per Baris)
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var currentRow []tgbotapi.InlineKeyboardButton
+
+	for i, btn := range allButtons {
+		currentRow = append(currentRow, btn)
+		// Jika sudah 2 tombol atau ini tombol terakhir, buat baris baru
+		if len(currentRow) == 2 || i == len(allButtons)-1 {
+			rows = append(rows, currentRow)
+			currentRow = []tgbotapi.InlineKeyboardButton{}
+		}
+	}
+
+	// 6. Baris Terakhir: Cancel (Sendiri di bawah)
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
+	))
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+// --- AKHIR PEMBARUAN 2 ---
+
+func (h *Handler) createImageUploadKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✅ Done", "dash_img_done"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Back", "dash_img_back"),
+		),
+	)
+}
+
+func (h *Handler) createDashboardAspectRatioKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1:1", "dash_set_ar:1:1"),
+			tgbotapi.NewInlineKeyboardButtonData("16:9", "dash_set_ar:16:9"),
+			tgbotapi.NewInlineKeyboardButtonData("9:16", "dash_set_ar:9:16"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("4:3", "dash_set_ar:4:3"),
+			tgbotapi.NewInlineKeyboardButtonData("3:4", "dash_set_ar:3:4"),
+			tgbotapi.NewInlineKeyboardButtonData("3:2", "dash_set_ar:3:2"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Back", "dash_back_main"),
+		),
+	)
+}
+
+func (h *Handler) createDashboardNumOutputsKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1", "dash_set_num:1"),
+			tgbotapi.NewInlineKeyboardButtonData("2", "dash_set_num:2"),
+			tgbotapi.NewInlineKeyboardButtonData("3", "dash_set_num:3"),
+			tgbotapi.NewInlineKeyboardButtonData("4", "dash_set_num:4"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Back", "dash_back_main"),
+		),
+	)
 }

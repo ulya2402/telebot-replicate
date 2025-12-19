@@ -23,9 +23,21 @@ func NewReplicateClient(apiToken string) (*ReplicateClient, error) {
 
 // AWAL PERUBAHAN
 func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt string, imageURL string, imageParamName string, aspectRatio string, numOutputs int, customParams map[string]interface{}, imageURLs ...[]string) ([]string, error) {
-	input := replicate.PredictionInput{
-		"prompt": prompt,
+	// 1. Inisialisasi input
+	input := replicate.PredictionInput{}
+
+	// 2. Masukkan customParams TERLEBIH DAHULU (sebagai nilai default/tambahan)
+	// Dengan begini, jika nanti parameter eksplisit (seperti num_outputs) dimasukkan, 
+	// parameter eksplisit itu yang akan menimpa (menang), bukan sebaliknya.
+	for key, value := range customParams {
+		if value != nil {
+			log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
+			input[key] = value
+		}
 	}
+
+	// 3. Masukkan Parameter Eksplisit (Ini yang akan digunakan API jika terjadi duplikasi key)
+	input["prompt"] = prompt
 
 	paramName := "input_image"
 	if imageParamName != "" {
@@ -41,16 +53,16 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 	if aspectRatio != "" {
 		input["aspect_ratio"] = aspectRatio
 	}
-	if numOutputs > 1 {
+	
+	// FIX BUG: Ubah kondisi dari '> 1' menjadi '> 0'.
+	// Jika user minta 1 gambar, kita HARUS kirim "num_outputs": 1 secara eksplisit.
+	// Jika tidak dikirim, API akan memakai default model (bisa jadi 4).
+	if numOutputs > 0 {
 		input["num_outputs"] = numOutputs
 	}
 
-	for key, value := range customParams {
-		if value != nil {
-			log.Printf("INFO: Applying custom parameter '%s' with value '%v'", key, value)
-			input[key] = value
-		}
-	}
+	// Debug log untuk melihat apa yang sebenarnya dikirim
+	log.Printf("DEBUG: Final Prediction Input for %s: %+v", modelID, input)
 
 	output, err := c.client.Run(ctx, modelID, input, nil)
 	if err != nil {
@@ -77,5 +89,3 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 	log.Printf("ERROR: %v", err)
 	return nil, err
 }
-
-// AKHIR PERUBAHAN

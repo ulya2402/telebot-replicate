@@ -9,7 +9,7 @@
       "cost": 1,
       "enabled": true,
       "accepts_image_input": false,
-      "configurable_aspect_ratio": false,
+      "configurable_aspect_ratio": true,
       "configurable_num_outputs": true,
       "show_templates": false,
       "parameters": [
@@ -105,7 +105,7 @@
       "cost": 1,
       "enabled": true,
       "image": true,
-      "configurable_aspect_ratio": false,
+      "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
       "description":"Flux Dev Lora is a special version of the Flux Dev text-to-image model that supports fast LoRA (Low-Rank Adaptation) inference. It’s great for generating images with fine-tuned styles based on your needs. You can customize both the aspect ratio and the number of outputs, making it super flexible for creative exploration.",
@@ -285,7 +285,7 @@
       "enabled": true,
       "accepts_image_input": true,
       "image_parameter_name": "reference_images",
-      "configurable_aspect_ratio": false,
+      "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
       "description":"Gen 4 by Runway is a next-gen image model that lets you create highly accurate images. Perfect for generating exactly what you have in mind. You can adjust the aspect ratio, but the number of outputs is fixed.",
@@ -493,7 +493,7 @@
       "accepts_image_input": true,
       "accepts_multiple_images": true,
       "image_parameter_name": "image_input",
-      "configurable_aspect_ratio": false,
+      "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
       "description": "Unified text-to-image generation and precise single-sentence editing at up to 4K resolution.",
@@ -519,7 +519,7 @@
       "enabled": true,
       "accepts_image_input": true,
       "accepts_multiple_images": false,
-      "configurable_aspect_ratio": false,
+      "configurable_aspect_ratio": true,
       "configurable_num_outputs": false,
       "show_templates": false,
       "description": "An image generation foundation model in the Qwen series that achieves significant advances in complex text rendering.",
@@ -638,6 +638,14 @@
           "description": "Random seed. Set for reproducible generation",
           "min": 0,
           "max": 9999999999
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
         }
       ]
     },
@@ -645,10 +653,10 @@
       "id": "flux-2-pro",
       "type": "image",
       "diamond_cost": 0,
-      "name": "Flux 2 Pro 4MP",
+      "name": "Flux 2 Pro",
       "replicate_id": "black-forest-labs/flux-2-pro",
       "tier": "premium",
-      "cost": 1,
+      "cost": 2,
       "enabled": true,
       "accepts_image_input": true,
       "accepts_multiple_images": true,
@@ -669,10 +677,11 @@
         },
         {
           "name": "resolution",
-          "label": "resolution",
+          "label": "Resolution",
           "type": "string",
-          "default": "4 MP",
-          "description": "Choose the output aspect ratio."
+          "default": "2K",
+          "description": "Output resolution",
+          "options": ["0.5 MP", "1 MP", "2 MP", "4 MP"]
         },
         {
           "name": "seed",
@@ -681,6 +690,14 @@
           "description": "Random seed. Set for reproducible generation",
           "min": 0,
           "max": 9999999999
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
         }
       ]
     },
@@ -688,7 +705,7 @@
       "id": "flux-2-flex",
       "type": "image",
       "diamond_cost": 0,
-      "name": "Flux 2 Flex 4MP",
+      "name": "Flux 2 Flex",
       "replicate_id": "black-forest-labs/flux-2-flex",
       "tier": "premium",
       "cost": 1,
@@ -711,11 +728,56 @@
           "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
         },
         {
+          "name": "seed",
+          "label": "Seed",
+          "type": "integer",
+          "description": "Random seed. Set for reproducible generation",
+          "min": 0,
+          "max": 9999999999
+        },
+        {
           "name": "resolution",
-          "label": "resolution",
+          "label": "Resolution",
           "type": "string",
-          "default": "4 MP",
-          "description": "Choose the output aspect ratio."
+          "default": "2 MP",
+          "description": "Output resolution",
+          "options": ["0.5 MP", "1 MP", "2 MP", "4 MP"]
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
+        }
+      ]
+    },
+    {
+      "id": "flux-2-max",
+      "type": "image",
+      "diamond_cost": 0,
+      "name": "Flux 2 Max",
+      "replicate_id": "black-forest-labs/flux-2-max",
+      "tier": "premium",
+      "cost": 2,
+      "enabled": true,
+      "accepts_image_input": true,
+      "accepts_multiple_images": true,
+      "configurable_aspect_ratio": true,
+      "image_parameter_name": "input_images",
+      "resolution": "4 MP",
+      "configurable_num_outputs": false,
+      "show_templates": false,
+      "description":"Max-quality image generation and editing.",
+      "parameters": [
+        {
+          "name": "aspect_ratio",
+          "label": "Aspect Ratio",
+          "type": "string",
+          "default": "1:1",
+          "description": "Choose the output aspect ratio.",
+          "options": ["16:9", "3:2", "2:3", "9:16", "4:3", "3:4", "1:1"]
         },
         {
           "name": "seed",
@@ -724,6 +786,22 @@
           "description": "Random seed. Set for reproducible generation",
           "min": 0,
           "max": 9999999999
+        },
+        {
+          "name": "resolution",
+          "label": "Resolution",
+          "type": "string",
+          "default": "2 MP",
+          "description": "Output resolution",
+          "options": ["0.5 MP", "1 MP", "2 MP"]
+        },
+        {
+          "name": "output_quality",
+          "label": "Output Quality",
+          "type": "integer",
+          "default": 80,
+          "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality.",
+          "options": ["40", "60", "70", "80", "90", "100"]
         }
       ]
     },
