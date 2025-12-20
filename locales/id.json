@@ -112,5 +112,22 @@
   "video_prompt_error": "❌ Model ini mengharuskan kamu mengirim gambar dengan perintah teks (sebagai caption). Coba lagi ya.",
   "multi_image_button_add": "🖼️ Tambah Gambar (Selesai)",
 "multi_image_button_done": "✅ Selesai & Tambah Prompt",
-"multi_image_received": "✅ Gambar {count} dari 4 diterima."
+"multi_image_received": "✅ Gambar {count} dari 4 diterima.",
+"button_prompt_gen": "📝 Generator Prompt",
+  "prompt_gen_title": "📝 <b>Asisten Pembuat Prompt</b>",
+  "prompt_gen_instruction": "Silakan kirimkan <b>ide kasar/singkat</b> gambar yang ingin Anda buat.\n<i>Contoh: Kucing terbang di luar angkasa pakai baju astronot.</i>",
+  "prompt_idea_received": "✅ <b>Ide Diterima:</b>\n<i>\"%s\"</i>\n\nSekarang pilih <b>Metode Prompting</b>:",
+  "prompt_gen_thinking": "⏳ <b>Gemini sedang berpikir...</b>\nMeracik prompt profesional untuk Anda...",
+  "prompt_gen_result_title": "✨ <b>Prompt Selesai (%s)</b>",
+  "prompt_gen_cost_info": "\n💵 <b>Biaya:</b> %d Kredit",
+  "prompt_method_zero_shot": "🚀 Zero-Shot",
+  "prompt_method_role": "🎭 Role Play",
+  "prompt_method_permutation": "🔀 Permutation",
+  "prompt_method_step": "🪜 Step-by-Step",
+  "prompt_method_json": "🤖 JSON Format",
+  "prompt_menu_title": "🤖 <b>Menu Asisten Prompt</b>\n\nPilih alat bantu untuk membuat prompt terbaik:",
+  "btn_mode_text": "📝 Ide ke Prompt",
+  "btn_mode_image": "🖼️ Gambar ke Prompt",
+  "prompt_image_instruction": "📸 <b>Gambar ke Prompt</b>\n\nSilakan kirimkan <b>foto</b> yang ingin Anda analisa.\nGemini akan menuliskan prompt detail untuk menirunya.",
+  "prompt_image_received": "✅ <b>Gambar Diterima!</b>\n\nMenganalisa elemen visual..."
 }

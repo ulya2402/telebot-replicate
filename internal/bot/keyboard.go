@@ -202,6 +202,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_prompt_gen"), "main_menu_prompt"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate_video"), "main_menu_generate_video"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -228,6 +231,8 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
         ),
 	)
 }
+
+
 
 func (h *Handler) createProfileKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
@@ -302,6 +307,25 @@ func (h *Handler) createFaqAnswerKeyboard(lang string) tgbotapi.InlineKeyboardMa
             tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "back_button"), "faq_back"),
         ),
     )
+}
+
+func (h *Handler) createPromptMethodKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "prompt_method_zero_shot"), "prompt_method:zero_shot"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "prompt_method_role"), "prompt_method:role"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "prompt_method_permutation"), "prompt_method:permutation"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "prompt_method_step"), "prompt_method:step"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "prompt_method_json"), "prompt_method:json"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
+		),
+	)
 }
 
 func (h *Handler) createAdvancedSettingsKeyboard(lang string, model *config.Model, user *database.User) (tgbotapi.InlineKeyboardMarkup, string) {
@@ -550,6 +574,21 @@ func (h *Handler) createDashboardNumOutputsKeyboard(lang string) tgbotapi.Inline
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🔙 Back", "dash_back_main"),
+		),
+	)
+}
+
+// [BARU] Menu Utama Prompt Assistant (Pilih Text atau Image)
+func (h *Handler) createPromptMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "btn_mode_text"), "prompt_mode:text"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "btn_mode_image"), "prompt_mode:image"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
 		),
 	)
 }

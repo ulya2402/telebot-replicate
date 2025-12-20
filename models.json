@@ -981,7 +981,6 @@
       "show_templates": false,
       "description": "Upscale image to a higher resolution with impressive quality using Recraft."
     },
-
     {
       "id": "seedance-1-lite",
       "name": "Seedance 1 Lite",
@@ -1021,5 +1020,17 @@
           "description": "Random seed. Set for reproducible generation."
         }
       ]
-  }
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "type": "llm",
+      "diamond_cost": 0,
+      "name": "Gemini 2.5 Flash",
+      "replicate_id": "google/gemini-2.5-flash",
+      "tier": "basic",
+      "cost": 1,
+      "enabled": true,
+      "description": "Google's fast and capable multimodal model.",
+      "parameters": []
+    }
   ]

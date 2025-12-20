@@ -112,7 +112,24 @@
     "multi_image_prompt": "<b>{model_name}</b>\n\nThis model supports multiple image inputs.\n\n- Send your photos <b>one by one</b> as a reference.\n- ⚠️ <b>Do not send as an album.</b>\n- When you're done, press 'Done & Add Prompt'.",
 "multi_image_button_add": "🖼️ Add Image (Done)",
 "multi_image_button_done": "✅ Done & Add Prompt",
-"multi_image_received": "✅ Image {count} of 4 received."
+"multi_image_received": "✅ Image {count} of 4 received.",
+"button_prompt_gen": "📝 Prompt Generator",
+  "prompt_gen_title": "📝 <b>Prompt Generator Assistant</b>",
+  "prompt_gen_instruction": "Please send your <b>rough idea</b> for the image.\n<i>Example: A cat flying in space wearing an astronaut suit.</i>",
+  "prompt_idea_received": "✅ <b>Idea Received:</b>\n<i>\"%s\"</i>\n\nNow choose a <b>Prompting Method</b>:",
+  "prompt_gen_thinking": "⏳ <b>Gemini is thinking...</b>\nCrafting professional prompts for you...",
+  "prompt_gen_result_title": "✨ <b>Prompt Generated (%s)</b>",
+  "prompt_gen_cost_info": "\n💵 <b>Cost:</b> %d Credits",
+  "prompt_method_zero_shot": "🚀 Zero-Shot",
+  "prompt_method_role": "🎭 Role Play",
+  "prompt_method_permutation": "🔀 Permutation",
+  "prompt_method_step": "🪜 Step-by-Step",
+  "prompt_method_json": "🤖 JSON Format",
+  "prompt_menu_title": "🤖 <b>Prompt Assistant Menu</b>\n\nChoose a tool to help you create perfect prompts:",
+  "btn_mode_text": "📝 Idea to Prompt",
+  "btn_mode_image": "🖼️ Image to Prompt",
+  "prompt_image_instruction": "📸 <b>Image to Prompt</b>\n\nPlease send the <b>photo</b> you want to analyze.\nGemini will write a detailed prompt to recreate it.",
+  "prompt_image_received": "✅ <b>Image Received!</b>\n\nAnalyzing visual elements..."
 
 
   }

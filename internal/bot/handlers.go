@@ -260,6 +260,8 @@ func (h *Handler) handleCommand(message *tgbotapi.Message) {
 		h.handleRemoveBg(message)
 	case "upscaler":
 		h.handleUpscaler(message)
+	case "prompt":
+		h.handlePromptCommand(message)
 	default:
 		log.Printf("DIAGNOSTIC: Command [%s] did not match any case. Sending 'Unknown command'.", command)
 
@@ -908,6 +910,20 @@ case "dash_img_clear":
 
 	case "main_menu_upscaler":
 		h.handleUpscaler(dummyMessage)
+	case "main_menu_prompt":
+		// Saat tombol menu utama diklik, tampilkan SUB-MENU Prompt Assistant
+		h.handlePromptMenu(dummyMessage) 
+
+	case "prompt_mode":
+		// Menangani pilihan user (Text atau Image)
+		if len(parts) > 1 {
+			h.handlePromptModeSelection(callback, parts[1])
+		}
+	
+	case "prompt_method":
+		if len(parts) > 1 {
+			h.handlePromptMethodCallback(callback, parts[1])
+		}
 	}
 }
 
@@ -1056,6 +1072,26 @@ func (h *Handler) handleCancelCallback(callback *tgbotapi.CallbackQuery) {
 	// Hapus data pending generation (gambar yang diupload tapi batal dipakai)
 	delete(h.pendingGenerations, callback.From.ID)
 	h.userStatesMutex.Unlock()
+
+	if ok && strings.HasPrefix(state, "awaiting_prompt_") {
+		
+		// Bersihkan state sepenuhnya
+		h.userStatesMutex.Lock()
+		delete(h.userStates, callback.From.ID)
+		h.userStatesMutex.Unlock()
+
+		// Hapus pesan menu Prompt Assistant
+		deleteMsg := tgbotapi.NewDeleteMessage(callback.Message.Chat.ID, callback.Message.MessageID)
+		h.Bot.Request(deleteMsg)
+
+		// Kembali ke Main Menu (/start)
+		dummyMessage := &tgbotapi.Message{
+			From: callback.From,
+			Chat: callback.Message.Chat,
+		}
+		h.handleStart(dummyMessage)
+		return
+	}
 
 	// 1. Deteksi tipe model dari state sebelumnya (Image atau Video)
 	modelType := "image" // Default
@@ -1494,6 +1530,24 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
+	if state == "awaiting_prompt_idea" {
+		if message.Text == "" { return }
+		h.handlePromptIdeaInput(message)
+		return
+	}
+
+	// 2. [BARU] Jika user sedang di mode IMAGE (Image-to-Prompt)
+	if state == "awaiting_prompt_image" {
+		// Pastikan user mengirim FOTO
+		if message.Photo != nil && len(message.Photo) > 0 {
+			h.handlePromptImageInput(message)
+		} else {
+			// Jika kirim teks doang, ingatkan butuh foto
+			h.Bot.Send(tgbotapi.NewMessage(message.Chat.ID, "❌ Please send an image/photo."))
+		}
+		return
+	}
+
 	// 3. LOGIKA INPUT PENGATURAN MANUAL (SEED, QUALITY, DLL)
 	if strings.HasPrefix(state, "edit_setting:") {
 		parts := strings.Split(strings.TrimPrefix(state, "edit_setting:"), ":")
@@ -1576,6 +1630,12 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 	}
 
 	// 4. LOGIKA LAIN (Exchange, RemoveBG, Video Prompt - Tetap dipertahankan)
+
+	if state == "awaiting_prompt_idea" {
+		if message.Text == "" { return }
+		h.handlePromptIdeaInput(message)
+		return
+	}
 	
 	if state == "awaiting_exchange_amount" {
 		diamondsToBuy, err := strconv.Atoi(message.Text)
