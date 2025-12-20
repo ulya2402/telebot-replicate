@@ -924,6 +924,20 @@ case "dash_img_clear":
 		if len(parts) > 1 {
 			h.handlePromptMethodCallback(callback, parts[1])
 		}
+	case "main_menu_chat":
+		h.handleChatModeStart(dummyMessage)
+	case "stop_chat_mode":
+		// 1. Jalankan logika stop (hapus sesi, reset history, kirim menu utama)
+		h.handleChatModeStop(dummyMessage)
+
+		// 2. JANGAN HAPUS PESANNYA. Cukup hilangkan tombol "Stop Chat"-nya saja.
+		// Kita edit pesan tersebut dengan markup (keyboard) kosong.
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			callback.Message.Chat.ID,
+			callback.Message.MessageID,
+			tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}}, // Keyboard kosong
+		)
+		h.Bot.Send(editMarkup)
 	}
 }
 
@@ -1494,6 +1508,11 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 			return
 		}
 		// Jika user mengirim foto di mode ini tanpa klik tombol "Add Image" dulu, abaikan.
+		return
+	}
+
+	if ok && state == "chat_mode" {
+		h.handleChatMessage(message)
 		return
 	}
 

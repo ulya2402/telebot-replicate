@@ -205,6 +205,9 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_prompt_gen"), "main_menu_prompt"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_chat_mode"), "main_menu_chat"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate_video"), "main_menu_generate_video"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
@@ -232,7 +235,15 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 	)
 }
 
-
+func (h *Handler) createChatModeKeyboard(lang string) tgbotapi.ReplyKeyboardMarkup {
+	keyboard := tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(h.Localizer.Get(lang, "chat_mode_stop_btn")),
+		),
+	)
+	keyboard.ResizeKeyboard = true // Agar tombol tidak kegedean
+	return keyboard
+}
 
 func (h *Handler) createProfileKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(

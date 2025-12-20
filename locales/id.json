@@ -129,5 +129,10 @@
   "btn_mode_text": "📝 Ide ke Prompt",
   "btn_mode_image": "🖼️ Gambar ke Prompt",
   "prompt_image_instruction": "📸 <b>Gambar ke Prompt</b>\n\nSilakan kirimkan <b>foto</b> yang ingin Anda analisa.\nGemini akan menuliskan prompt detail untuk menirunya.",
-  "prompt_image_received": "✅ <b>Gambar Diterima!</b>\n\nMenganalisa elemen visual..."
+  "prompt_image_received": "✅ <b>Gambar Diterima!</b>\n\nMenganalisa elemen visual...",
+  "button_chat_mode": "💬 Chat dengan Gemini",
+  "chat_mode_welcome": "🟢 <b>Mode Chat Aktif!</b>\n\nSaya siap mengobrol atau menganalisa foto Anda.\n<i>Biaya: 1 Kredit per balasan.</i>\n\nTekan tombol di bawah untuk berhenti.",
+  "chat_mode_stop_btn": "❌ Stop Chat",
+  "chat_mode_stopped": "🔴 <b>Mode Chat Berakhir.</b>\nKembali ke menu utama...",
+  "chat_mode_reply_cost": "\n\n💰 <i>Biaya: %d Kredit</i>"
 }
