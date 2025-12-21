@@ -91,39 +91,34 @@ func (c *ReplicateClient) CreatePrediction(ctx context.Context, modelID, prompt 
 	return nil, err
 }
 
-func (c *ReplicateClient) CreateTextCompletion(ctx context.Context, modelID string, prompt string, systemInstruction string, temperature float64, maxOutputTokens int, thinkingBudget int) (string, error) {
+// [UPDATE] Fungsi Text Completion yang Universal (Support Gemini & Model Lain)
+// Pastikan parameter inputnya ada 6: ctx, modelID, prompt, sysMsg, temp, maxTokens
+func (c *ReplicateClient) CreateTextCompletion(ctx context.Context, modelID string, prompt string, systemInstruction string, temperature float64, maxTokens int) (string, error) {
 	input := replicate.PredictionInput{
 		"prompt": prompt,
+		"max_tokens":        maxTokens,
+		"max_output_tokens": maxTokens, 
 	}
 
 	if systemInstruction != "" {
+		input["system_prompt"] = systemInstruction
 		input["system_instruction"] = systemInstruction
 	}
-	
-	// Default temperature Gemini biasanya 1.0, kita izinkan custom
+
 	if temperature > 0 {
 		input["temperature"] = temperature
 	}
 
-	if maxOutputTokens > 0 {
-		input["max_output_tokens"] = maxOutputTokens
-	}
+	// LOG PENTING: Agar kita tahu request dikirim
+	log.Printf("DEBUG REPLICATE: Sending TEXT to %s | Prompt Len: %d", modelID, len(prompt))
 
-	// [BARU] Set Thinking Budget (sesuai request)
-	if thinkingBudget > 0 {
-		input["thinking_budget"] = thinkingBudget
-	}
-
-	log.Printf("DEBUG: Sending text request to %s. Prompt len: %d", modelID, len(prompt))
-
-	// Jalankan prediksi
 	output, err := c.client.Run(ctx, modelID, input, nil)
 	if err != nil {
-		log.Printf("ERROR: Text generation failed: %v", err)
+		log.Printf("ERROR REPLICATE: %v", err) // Log error jika Replicate menolak
 		return "", err
 	}
 
-	// Parsing Output Gemini (biasanya array of strings yang perlu digabung)
+	// Parsing Output
 	if outputSlice, ok := output.([]interface{}); ok {
 		var sb strings.Builder
 		for _, item := range outputSlice {
@@ -133,13 +128,12 @@ func (c *ReplicateClient) CreateTextCompletion(ctx context.Context, modelID stri
 		}
 		return sb.String(), nil
 	}
-	
-	// Jika output langsung string
+
 	if outputStr, ok := output.(string); ok {
 		return outputStr, nil
 	}
 
-	return "", fmt.Errorf("unknown output format from LLM")
+	return "", fmt.Errorf("unknown output format")
 }
 
 // [BARU] Fungsi khusus untuk Vision (Gambar + Teks -> Teks)

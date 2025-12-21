@@ -130,11 +130,13 @@
   "btn_mode_image": "🖼️ Image to Prompt",
   "prompt_image_instruction": "📸 <b>Image to Prompt</b>\n\nPlease send the <b>photo</b> you want to analyze.\nGemini will write a detailed prompt to recreate it.",
   "prompt_image_received": "✅ <b>Image Received!</b>\n\nAnalyzing visual elements...",
-  "button_chat_mode": "💬 Chat with Gemini",
+  "button_chat_mode": "💬 Chat with AI",
   "chat_mode_welcome": "🟢 <b>Chat Mode Active!</b>\n\nI am ready to chat or analyze your photos.\n<i>Cost: 1 Credit per reply.</i>\n\nPress the button below to stop.",
   "chat_mode_stop_btn": "❌ Stop Chat",
   "chat_mode_stopped": "🔴 <b>Chat Mode Ended.</b>\nReturning to main menu...",
-  "chat_mode_reply_cost": "\n\n💰 <i>Cost: %d Credit</i>"
+  "chat_mode_reply_cost": "\n\n<blockquote>💰 <i>Cost: %d Credit</i></blockquote>",
+  "chat_mode_reset_btn": "🧹 Reset Memory",
+  "chat_mode_reset_done": "🧹 <b>Memory Cleared!</b>\nI have forgotten our previous conversation."
 
 
   }

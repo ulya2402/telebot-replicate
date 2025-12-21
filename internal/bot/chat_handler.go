@@ -6,7 +6,6 @@ import (
 	"html"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,86 +15,128 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// --- MEMORY PENYIMPANAN RIWAYAT CHAT ---
-// Kita gunakan map sederhana di level paket untuk menyimpan history sementara.
-// Key: UserID, Value: Slice of strings (urutan percakapan)
 var (
 	chatHistory      = make(map[int64][]string)
 	chatHistoryMutex sync.Mutex
 )
+const maxHistoryItems = 12
 
-// Konfigurasi History
-const maxHistoryItems = 12 // Simpan 6 percakapan terakhir (User + Bot)
+// ---------------------------------------------------------
+// 1. TAHAP PEMILIHAN MODEL
+// ---------------------------------------------------------
 
-// 1. Memulai Chat Mode
-func (h *Handler) handleChatModeStart(message *tgbotapi.Message) {
+func (h *Handler) handleChatModelSelectionMenu(message *tgbotapi.Message) {
+	h.userStatesMutex.Lock()
+	h.userStates[message.From.ID] = "awaiting_chat_model_selection"
+	h.userStatesMutex.Unlock()
+
+	text := "🧠 <b>Select AI Model</b>\n\nChoose which AI brain you want to talk to:"
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "HTML"
+	keyboard := h.createChatModelKeyboard()
+	msg.ReplyMarkup = &keyboard
+	h.Bot.Send(msg)
+}
+
+// ---------------------------------------------------------
+// 2. MEMULAI SESI CHAT
+// ---------------------------------------------------------
+
+func (h *Handler) handleChatModeStart(message *tgbotapi.Message, modelID string) {
 	user, _ := h.getOrCreateUser(message.From)
 	lang := user.LanguageCode
 
-	// Set State ke "chat_mode"
+	h.Bot.Request(tgbotapi.NewDeleteMessage(message.Chat.ID, message.MessageID))
+
+	// LOGGING
+	log.Printf("DEBUG: Starting Chat Mode for User %d with Model: %s", user.TelegramID, modelID)
+
 	h.userStatesMutex.Lock()
-	h.userStates[user.TelegramID] = "chat_mode"
+	h.userStates[user.TelegramID] = "chat_mode:" + modelID
 	h.userStatesMutex.Unlock()
 
-	// Reset History User Ini (Mulai sesi baru bersih)
 	h.clearChatHistory(user.TelegramID)
 
-	text := h.Localizer.Get(lang, "chat_mode_welcome")
+	modelName := extractModelName(modelID)
+	text := fmt.Sprintf("🟢 <b>Chat Mode Active!</b>\n\n🧠 Brain: <code>%s</code>\nCredits: 1 per reply.\n\nSend text or photo to start.", modelName)
 	
-	msg := h.newReplyMessage(message, text)
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	msg.ParseMode = "HTML"
-	
-	// Tampilkan Keyboard Bawah (Reply Keyboard)
 	keyboard := h.createChatModeKeyboard(lang)
 	msg.ReplyMarkup = keyboard
 
 	h.Bot.Send(msg)
 }
 
-// 2. Menangani Pesan Masuk saat di Chat Mode
+// ---------------------------------------------------------
+// 3. LOGIKA UTAMA CHAT (HYBRID)
+// ---------------------------------------------------------
+
 func (h *Handler) handleChatMessage(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
 	lang := user.LanguageCode
 	userID := user.TelegramID
+
+	cost := 1
 	
-	// Cek Command Stop (Text atau Command)
+	// LOGGING: Cek pesan masuk
+	log.Printf("DEBUG: Chat Message Received from %d: %s", userID, message.Text)
+
+	resetCmd := h.Localizer.Get(lang, "chat_mode_reset_btn")
+	if message.Text == resetCmd || message.Text == "/reset" {
+		h.handleChatModeReset(message)
+		return
+	}
+
 	stopCmd := h.Localizer.Get(lang, "chat_mode_stop_btn")
 	if message.Text == stopCmd || message.Text == "/exit" || message.Text == "/start" {
 		h.handleChatModeStop(message)
 		return
 	}
 
-	// Cek Saldo (Biaya: 1 Kredit)
-	cost := 1
-	totalCredits := user.PaidCredits + user.FreeCredits
-	if totalCredits < cost {
-		args := map[string]string{
-			"required": strconv.Itoa(cost),
-			"balance":  strconv.Itoa(totalCredits),
-		}
+	// Ambil State & Model
+	h.userStatesMutex.Lock()
+	state := h.userStates[userID]
+	h.userStatesMutex.Unlock()
+
+	// FIX LOGIC: Parsing Model ID
+	var selectedModel string
+	if strings.HasPrefix(state, "chat_mode:") {
+		selectedModel = strings.TrimPrefix(state, "chat_mode:")
+	} else {
+		// Jika state cuma "chat_mode" (legacy state), paksa default
+		selectedModel = "google/gemini-2.5-flash"
+	}
+	
+	// FIX LOGIC: Jika kosong, paksa default lagi
+	if selectedModel == "" {
+		selectedModel = "google/gemini-2.5-flash"
+	}
+
+	log.Printf("DEBUG: Selected Model is: %s", selectedModel)
+
+	h.Bot.Send(tgbotapi.NewChatAction(message.Chat.ID, tgbotapi.ChatTyping))
+
+	// Cek Kredit (Tanpa potong dulu)
+	if !h.deductUserCredit(user, 0) {
+		log.Printf("DEBUG: Insufficient Credits for user %d", userID)
+		args := map[string]string{"required": "1", "balance": fmt.Sprintf("%d", user.PaidCredits+user.FreeCredits)}
 		failMsg := h.newReplyMessage(message, h.Localizer.Getf(lang, "insufficient_credits", args))
 		h.Bot.Send(failMsg)
 		return
 	}
 
-	// Kirim "Typing..." action
-	action := tgbotapi.NewChatAction(message.Chat.ID, tgbotapi.ChatTyping)
-	h.Bot.Send(action)
-
-	// --- PERSIAPAN INPUT GEMINI ---
-	replicateModelPath := "google/gemini-2.5-flash"
+	var finalModelID string
 	var prompt string
 	var imageURL string
 	var currentInputText string
 
 	if message.Photo != nil && len(message.Photo) > 0 {
-		// Jika kirim gambar (Vision) -> History sementara diabaikan/reset untuk fokus ke gambar
+		log.Printf("DEBUG: Input is PHOTO")
+		finalModelID = "google/gemini-2.5-flash"
 		prompt = message.Caption
-		if prompt == "" {
-			prompt = "Describe this image in detail and answer any user questions about it."
-		}
-		currentInputText = "[User sent an image] " + prompt
-
+		if prompt == "" { prompt = "Describe this image in detail." }
+		currentInputText = "[Image] " + prompt
 		bestPhoto := message.Photo[len(message.Photo)-1]
 		url, err := h.getFileURL(bestPhoto.FileID)
 		if err != nil {
@@ -104,191 +145,161 @@ func (h *Handler) handleChatMessage(message *tgbotapi.Message) {
 		}
 		imageURL = url
 	} else {
-		// Jika teks biasa
+		log.Printf("DEBUG: Input is TEXT")
+		finalModelID = selectedModel
 		currentInputText = message.Text
 		if currentInputText == "" { return }
-		
-		// RAKIT CONTEXT DARI HISTORY
+
 		history := h.getChatHistory(userID)
-		
-		// System Prompt agar bot punya kepribadian
-		systemPrompt := "System: You are a helpful, smart, and friendly AI assistant inside a Telegram Bot. " +
-			"Use Emoji. Keep answers concise but informative. Format output in Markdown."
-		
-		// Gabungkan: System + History + Input Baru
 		var sb strings.Builder
-		sb.WriteString(systemPrompt + "\n\n")
+		sb.WriteString("System: You are a helpful AI assistant. Format output in Markdown.\n\n")
 		for _, entry := range history {
 			sb.WriteString(entry + "\n")
 		}
 		sb.WriteString("User: " + currentInputText)
-		
 		prompt = sb.String()
 	}
 
-	// Proses di Background
+	// Eksekusi Background
 	go func() {
+		log.Printf("DEBUG: Launching Goroutine for Replicate...")
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
 
 		var resultText string
 		var err error
 
-		// Panggil Gemini (Vision atau Text)
 		if imageURL != "" {
-			resultText, err = h.Replicate.CreateVisionCompletion(ctx, replicateModelPath, prompt, imageURL, 1024)
+			resultText, err = h.Replicate.CreateVisionCompletion(ctx, finalModelID, prompt, imageURL, 1024)
 		} else {
-			// Text Completion
-			// Kita kirim prompt lengkap (history) sebagai prompt utama
-			// SysPrompt kosong karena sudah digabung di prompt utama
-			resultText, err = h.Replicate.CreateTextCompletion(ctx, replicateModelPath, prompt, "", 0.7, 1024, 0)
+			// LOGGING SEBELUM CALL REPLICATE
+			log.Printf("DEBUG: Calling CreateTextCompletion with Model: %s", finalModelID)
+			
+			// Pastikan replicate.go menerima 6 argumen!
+			resultText, err = h.Replicate.CreateTextCompletion(ctx, finalModelID, prompt, "", 0.7, 1024)
 		}
 
 		if err != nil {
-			log.Printf("ERROR Gemini Chat: %v", err)
-			h.Bot.Send(h.newReplyMessage(message, "❌ AI is busy/overloaded. Try again."))
+			log.Printf("ERROR calling Replicate API: %v", err) // <--- INI PENTING DILIHAT
+			h.Bot.Send(h.newReplyMessage(message, "❌ AI failed to respond. Try again."))
 			return
 		}
 
-		// SIMPAN KE HISTORY (Hanya jika teks, bukan gambar)
+		log.Printf("DEBUG: Replicate Success! Response len: %d", len(resultText))
+
 		if imageURL == "" {
 			h.appendChatHistory(userID, "User: "+currentInputText)
 			h.appendChatHistory(userID, "Model: "+resultText)
 		}
 
-		// Potong Saldo
 		if h.deductUserCredit(user, cost) {
-			// --- FORMATTING HTML (Markdown Fix) ---
 			formattedText := h.formatChatMarkdownToHTML(resultText)
-
-			// Info biaya
+			//header := fmt.Sprintf("🤖 <i>%s</i>\n\n", extractModelName(finalModelID))
 			costInfo := fmt.Sprintf(h.Localizer.Get(lang, "chat_mode_reply_cost"), cost)
 			finalMsg := formattedText + costInfo
 
 			reply := h.newReplyMessage(message, finalMsg)
-			reply.ParseMode = "HTML" // Gunakan HTML agar stabil
+			reply.ParseMode = "HTML"
 			
-			// --- TAMBAHAN: TOMBOL STOP DI SETIAP PESAN ---
-			// Jika keyboard bawah tidak muncul, user bisa klik ini
-			stopBtn := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("❌ Stop Chat", "stop_chat_mode"),
-				),
-			)
-			reply.ReplyMarkup = stopBtn
+			//stopBtn := tgbotapi.NewInlineKeyboardMarkup(
+				//tgbotapi.NewInlineKeyboardRow(
+					//tgbotapi.NewInlineKeyboardButtonData("❌ Stop Chat", "stop_chat_mode"),
+				//),
+			//)
+			//reply.ReplyMarkup = stopBtn
 
-			h.Bot.Send(reply)
+			sent, errSend := h.Bot.Send(reply)
+			if errSend != nil {
+				log.Printf("ERROR Sending Telegram Msg: %v", errSend)
+				// Fallback jika HTML error (misal ada tag aneh dari AI)
+				reply.ParseMode = ""
+				h.Bot.Send(reply)
+			} else {
+				log.Printf("DEBUG: Message Sent ID: %d", sent.MessageID)
+			}
 		}
 	}()
 }
 
-// 3. Menghentikan Chat Mode
+// ---------------------------------------------------------
+// HELPER & UTILS
+// ---------------------------------------------------------
+
 func (h *Handler) handleChatModeStop(message *tgbotapi.Message) {
 	user, _ := h.getOrCreateUser(message.From)
-	lang := user.LanguageCode
 	userID := user.TelegramID
 
-	// Hapus State
 	h.userStatesMutex.Lock()
 	delete(h.userStates, userID)
 	h.userStatesMutex.Unlock()
 
-	// Bersihkan History
 	h.clearChatHistory(userID)
 
-	text := h.Localizer.Get(lang, "chat_mode_stopped")
-	msg := h.newReplyMessage(message, text)
+	msg := h.newReplyMessage(message, "🔴 <b>Chat Mode Ended.</b>")
 	msg.ParseMode = "HTML"
-	
-	// Hapus Keyboard Bawah
 	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	
 	h.Bot.Send(msg)
-
-	// Tampilkan Menu Utama lagi
 	h.handleStart(message)
 }
 
-// --- HELPER FUNCTIONS ---
-
 func (h *Handler) deductUserCredit(user *database.User, cost int) bool {
+	if cost == 0 { return true }
 	u, _ := h.DB.GetUserByTelegramID(user.TelegramID)
-	costLeft := cost
-	if u.FreeCredits > 0 {
-		if u.FreeCredits >= costLeft {
-			u.FreeCredits -= costLeft
-			costLeft = 0
-		} else {
-			costLeft -= u.FreeCredits
-			u.FreeCredits = 0
-		}
-	}
-	if costLeft > 0 {
-		if u.PaidCredits < costLeft { return false }
-		u.PaidCredits -= costLeft
+	
+	// Pastikan saldo cukup
+	total := u.PaidCredits + u.FreeCredits
+	if total < cost { return false }
+	
+	if u.FreeCredits >= cost {
+		u.FreeCredits -= cost
+	} else {
+		rem := cost - u.FreeCredits
+		u.FreeCredits = 0
+		u.PaidCredits -= rem
 	}
 	h.DB.UpdateUser(u)
 	return true
 }
 
-// Helper: Format Markdown Gemini (Bold **) ke HTML Telegram (<b>)
-func (h *Handler) formatChatMarkdownToHTML(text string) string {
-	// 1. Sanitize input agar tidak merusak HTML (escape < > &)
-	clean := html.EscapeString(text)
-
-	// 2. Convert Code Blocks (```) -> <pre>
-	reCodeBlock := regexp.MustCompile("```(?:\\w*\\n)?([\\s\\S]*?)```")
-	clean = reCodeBlock.ReplaceAllString(clean, "<pre>$1</pre>")
-
-	// 3. Convert Inline Code (`) -> <code>
-	reInlineCode := regexp.MustCompile("`([^`]+)`")
-	clean = reInlineCode.ReplaceAllString(clean, "<code>$1</code>")
-
-	// 4. Convert Bold (**) -> <b>
-	reBold := regexp.MustCompile(`\*\*([^*]+)\*\*`)
-	clean = reBold.ReplaceAllString(clean, "<b>$1</b>")
-
-	// 5. Convert Italic (*) -> <i> (Optional, kadang Gemini pakai *)
-	// Hati-hati regex ini bisa agresif, kita batasi ke yang jelas pasangannya
-	reItalic := regexp.MustCompile(`\*([^*]+)\*`)
-	clean = reItalic.ReplaceAllString(clean, "<i>$1</i>")
-	
-	// 6. Convert Bullet Points (* di awal baris) -> Bullet standar
-	clean = strings.ReplaceAll(clean, "\n* ", "\n• ")
-
-	return clean
+func extractModelName(replicateID string) string {
+	parts := strings.Split(replicateID, "/")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return replicateID
 }
 
-// --- HISTORY MANAGER ---
+func (h *Handler) formatChatMarkdownToHTML(text string) string {
+	clean := html.EscapeString(text)
+	reCodeBlock := regexp.MustCompile("```(?:\\w*\\n)?([\\s\\S]*?)```")
+	clean = reCodeBlock.ReplaceAllString(clean, "<pre>$1</pre>")
+	reInlineCode := regexp.MustCompile("`([^`]+)`")
+	clean = reInlineCode.ReplaceAllString(clean, "<code>$1</code>")
+	reBold := regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	clean = reBold.ReplaceAllString(clean, "<b>$1</b>")
+	reItalic := regexp.MustCompile(`\*([^*]+)\*`)
+	clean = reItalic.ReplaceAllString(clean, "<i>$1</i>")
+	return clean
+}
 
 func (h *Handler) appendChatHistory(userID int64, text string) {
 	chatHistoryMutex.Lock()
 	defer chatHistoryMutex.Unlock()
-
-	history, exists := chatHistory[userID]
-	if !exists {
-		history = []string{}
-	}
-
+	history, _ := chatHistory[userID]
 	history = append(history, text)
-	
-	// Jaga agar tidak terlalu panjang (FIFO)
 	if len(history) > maxHistoryItems {
 		history = history[len(history)-maxHistoryItems:]
 	}
-	
 	chatHistory[userID] = history
 }
 
 func (h *Handler) getChatHistory(userID int64) []string {
 	chatHistoryMutex.Lock()
 	defer chatHistoryMutex.Unlock()
-	
 	if history, ok := chatHistory[userID]; ok {
-		// Return copy agar aman
-		result := make([]string, len(history))
-		copy(result, history)
-		return result
+		res := make([]string, len(history))
+		copy(res, history)
+		return res
 	}
 	return []string{}
 }
@@ -297,4 +308,20 @@ func (h *Handler) clearChatHistory(userID int64) {
 	chatHistoryMutex.Lock()
 	defer chatHistoryMutex.Unlock()
 	delete(chatHistory, userID)
+}
+
+// [BARU] Fungsi Menghapus Ingatan
+func (h *Handler) handleChatModeReset(message *tgbotapi.Message) {
+	user, _ := h.getOrCreateUser(message.From)
+	lang := user.LanguageCode
+	userID := user.TelegramID
+
+	// Hapus history user ini dari memori
+	h.clearChatHistory(userID)
+
+	// Kirim pesan konfirmasi
+	text := h.Localizer.Get(lang, "chat_mode_reset_done")
+	msg := h.newReplyMessage(message, text)
+	msg.ParseMode = "HTML"
+	h.Bot.Send(msg)
 }

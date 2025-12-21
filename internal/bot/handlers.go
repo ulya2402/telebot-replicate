@@ -925,19 +925,15 @@ case "dash_img_clear":
 			h.handlePromptMethodCallback(callback, parts[1])
 		}
 	case "main_menu_chat":
-		h.handleChatModeStart(dummyMessage)
-	case "stop_chat_mode":
-		// 1. Jalankan logika stop (hapus sesi, reset history, kirim menu utama)
-		h.handleChatModeStop(dummyMessage)
+		// Langkah 1: Tampilkan Menu Pilih Model (Bukan langsung start)
+		h.handleChatModelSelectionMenu(dummyMessage)
 
-		// 2. JANGAN HAPUS PESANNYA. Cukup hilangkan tombol "Stop Chat"-nya saja.
-		// Kita edit pesan tersebut dengan markup (keyboard) kosong.
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			callback.Message.Chat.ID,
-			callback.Message.MessageID,
-			tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}}, // Keyboard kosong
-		)
-		h.Bot.Send(editMarkup)
+	case "select_chat_model":
+		// Langkah 2: User sudah pilih model -> Mulai Chat
+		if len(parts) > 1 {
+			modelID := parts[1]
+			h.handleChatModeStart(dummyMessage, modelID)
+		}
 	}
 }
 
@@ -1511,7 +1507,7 @@ func (h *Handler) handleMessage(message *tgbotapi.Message) {
 		return
 	}
 
-	if ok && state == "chat_mode" {
+	if ok && strings.HasPrefix(state, "chat_mode") {
 		h.handleChatMessage(message)
 		return
 	}

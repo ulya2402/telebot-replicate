@@ -238,7 +238,7 @@ func (h *Handler) processTextToPrompt(userID, chatID int64, idea, method, lang s
 	defer cancel()
 
 	// Parameter: temperature=0.8, maxOutputTokens=2048, thinkingBudget=0
-	resultText, err := h.Replicate.CreateTextCompletion(ctx, replicateModelPath, idea, systemInstruction, 0.8, 2048, 0)
+	resultText, err := h.Replicate.CreateTextCompletion(ctx, replicateModelPath, idea, systemInstruction, 0.8, 2048)
 	if err != nil {
 		failText := h.Localizer.Get(lang, "generation_failed")
 		h.Bot.Send(tgbotapi.NewMessage(chatID, "❌ "+failText))

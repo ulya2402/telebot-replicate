@@ -1022,15 +1022,21 @@
       ]
     },
     {
-      "id": "gemini-2.5-flash",
-      "type": "llm",
-      "diamond_cost": 0,
-      "name": "Gemini 2.5 Flash",
+      "id": "gemini-flash",
+      "type": "chat_model",
+      "name": "Gemini Flash",
       "replicate_id": "google/gemini-2.5-flash",
-      "tier": "basic",
       "cost": 1,
       "enabled": true,
-      "description": "Google's fast and capable multimodal model.",
-      "parameters": []
+      "description": "Fast & Multimodal."
+    },
+    {
+      "id": "gpt-oss-120b",
+      "type": "chat_model",
+      "name": "GPT OSS 120B",
+      "replicate_id": "openai/gpt-oss-120b", 
+      "cost": 1,
+      "enabled": true,
+      "description": "Powerful open source model."
     }
   ]

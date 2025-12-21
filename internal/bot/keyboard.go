@@ -238,6 +238,7 @@ func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMar
 func (h *Handler) createChatModeKeyboard(lang string) tgbotapi.ReplyKeyboardMarkup {
 	keyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(h.Localizer.Get(lang, "chat_mode_reset_btn")),
 			tgbotapi.NewKeyboardButton(h.Localizer.Get(lang, "chat_mode_stop_btn")),
 		),
 	)
@@ -602,4 +603,34 @@ func (h *Handler) createPromptMainMenuKeyboard(lang string) tgbotapi.InlineKeybo
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "cancel_button"), "cancel_flow"),
 		),
 	)
+}
+
+// [PERBAIKAN] Menggunakan h.EnabledModels alih-alih h.Config.Models
+// [PERBAIKAN] Definisi Manual (Hardcode) untuk menghindari error struct
+func (h *Handler) createChatModelKeyboard() tgbotapi.InlineKeyboardMarkup {
+	var rows [][]tgbotapi.InlineKeyboardButton
+	
+	// Daftar Model Chat (Sesuaikan dengan yang ada di models.json Anda)
+	chatModels := []struct {
+		Name string
+		ID   string
+	}{
+		{"Deepseek 3.1", "deepseek-ai/deepseek-v3.1"},
+		{"Gemini 2.5 Flash", "google/gemini-2.5-flash"},
+		{"GPT OSS 120B", "openai/gpt-oss-120b"},
+		{"GPT 5 Nano", "openai/gpt-5-nano"},
+		{"Grok 4", "xai/grok-4"},	
+	}
+
+	for _, model := range chatModels {
+		// Data callback: "select_chat_model:replicate_id"
+		btn := tgbotapi.NewInlineKeyboardButtonData(model.Name, "select_chat_model:"+model.ID)
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{btn})
+	}
+
+	// Tambah tombol cancel
+	cancelBtn := tgbotapi.NewInlineKeyboardButtonData("❌ Cancel", "cancel_flow")
+	rows = append(rows, []tgbotapi.InlineKeyboardButton{cancelBtn})
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
