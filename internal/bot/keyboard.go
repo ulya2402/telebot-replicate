@@ -195,43 +195,58 @@ func (h *Handler) createNumOutputsKeyboard(lang string) tgbotapi.InlineKeyboardM
 	)
 }
 
+// 1. UPDATE MENU UTAMA (Lebih Ringkas)
 func (h *Handler) createMainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
+		// --- FITUR UTAMA (Creation & Chat) ---
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate"), "main_menu_generate"),
-
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_prompt_gen"), "main_menu_prompt"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_chat_mode"), "main_menu_chat"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate_video"), "main_menu_generate_video"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_prompt_gen"), "main_menu_prompt"),
+		),
+
+		// --- TOMBOL PINTU KE TOOLS (Baru) ---
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_tools"), "open_tools_menu"),
+		),
+		// ------------------------------------
+
+		// --- FITUR SISTEM (Setting, Saldo, dll) ---
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_language"), "main_menu_language"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_help"), "main_menu_help"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_removebg"), "main_menu_removebg"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_account"), "main_menu_account"), // Asumsi ada tombol akun/saldo
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_faq"), "main_menu_faq"),
+		),
+	)
+}
 
+// 2. BUAT FUNGSI BARU (Sub-Menu Tools)
+func (h *Handler) createToolsMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		// Pindahkan tombol Video, RemoveBG, Upscaler ke sini
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_generate_video"), "main_menu_generate_video"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_upscaler"), "main_menu_upscaler"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			///tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_settings"), "main_menu_settings"),
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_language"), "main_menu_language"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_removebg"), "main_menu_removebg"),
 		),
+		// Tombol Kembali
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_help"), "main_menu_help"),
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_referral"), "main_menu_referral"),
+			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_back"), "back_to_main_menu"),
 		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_topup"), "main_menu_topup"),
-			tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_exchange"), "main_menu_exchange"),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData(h.Localizer.Get(lang, "button_faq"), "main_menu_faq"),
-        ),
 	)
 }
 

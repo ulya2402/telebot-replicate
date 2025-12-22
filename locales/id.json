@@ -134,5 +134,8 @@
   "chat_mode_welcome": "🟢 <b>Mode Chat Aktif!</b>\n\nSaya siap mengobrol atau menganalisa foto Anda.\n<i>Biaya: 1 Kredit per balasan.</i>\n\nTekan tombol di bawah untuk berhenti.",
   "chat_mode_stop_btn": "❌ Stop Chat",
   "chat_mode_stopped": "🔴 <b>Mode Chat Berakhir.</b>\nKembali ke menu utama...",
-  "chat_mode_reply_cost": "\n\n<blockquote>💰 <i>Biaya: %d Kredit</i></blockquote>"
+  "chat_mode_reply_cost": "\n\n<blockquote>💰 <i>Biaya: %d Kredit</i></blockquote>",
+  "button_tools": "🛠️ Fitur Lainnya",
+  "button_back": "🔙 Kembali ke Menu Utama",
+  "tools_menu_welcome": "🛠️ <b>Menu Peralatan</b>\n\nPilih salah satu alat bantu di bawah ini:"
 }

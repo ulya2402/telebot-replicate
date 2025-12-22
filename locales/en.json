@@ -136,7 +136,12 @@
   "chat_mode_stopped": "🔴 <b>Chat Mode Ended.</b>\nReturning to main menu...",
   "chat_mode_reply_cost": "\n\n<blockquote>💰 <i>Cost: %d Credit</i></blockquote>",
   "chat_mode_reset_btn": "🧹 Reset Memory",
-  "chat_mode_reset_done": "🧹 <b>Memory Cleared!</b>\nI have forgotten our previous conversation."
+  "chat_mode_reset_done": "🧹 <b>Memory Cleared!</b>\nI have forgotten our previous conversation.",
+  "welcome_message": "<b>Welcome</b> 🎨\n\nI am your personal AI assistant for image generation. You can bring any idea to life, just by using words.\n\n<blockquote>You get <b>5 free credits</b> every day to start creating!</blockquote>\n\n<b>Want more credits? 🚀</b>\n\nsubscribe using the command <b>/topup</b> or tap the button below. We accept payments via <b>Stars ⭐</b> or <b>manual transfer! 💳</b>",
+  "button_account": "💳 My Account",
+  "tools_menu_welcome": "🛠️ <b>Toolbox Menu</b>\n\nSelect one of the utility tools below to edit your media:",
+  "button_tools": "🛠️ Other Tools",
+  "button_back": "🔙 Back to Main Menu"
 
 
   }

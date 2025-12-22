@@ -600,6 +600,7 @@ case "dash_back_main":
 	}
 	return
 
+
 case "dash_set_ar":
 	user.AspectRatio = data
 	h.DB.UpdateUser(user)
@@ -813,6 +814,8 @@ case "dash_img_clear":
 		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
 	case "settings_back_to_main":
 		h.updateSettingsMessage(callback.Message.Chat.ID, callback.Message.MessageID, user)
+	
+	
 
 	case "main_menu_generate":
 		h.handleImageCommand(dummyMessage)
@@ -927,6 +930,66 @@ case "dash_img_clear":
 	case "main_menu_chat":
 		// Langkah 1: Tampilkan Menu Pilih Model (Bukan langsung start)
 		h.handleChatModelSelectionMenu(dummyMessage)
+
+	case "main_menu_account":
+		// 1. Matikan loading spinner di tombol
+		h.Bot.Request(tgbotapi.NewCallback(callback.ID, ""))
+
+		// 2. Buat "Pesan Tiruan" (Dummy Message)
+		// Kita butuh ini karena fungsi handleProfile membaca 'message.From'
+		// Sedangkan di callback, 'message.From' itu adalah Bot, bukan User.
+		dummyMessage := *callback.Message // Copy struktur pesan
+		dummyMessage.From = callback.From // Ganti pengirimnya jadi User yang klik tombol
+		dummyMessage.Text = "/profile"    // Pura-pura user mengetik /profile
+
+		// 3. Panggil fungsi handleProfile yang sudah ada
+		// Ini akan mengirim pesan baru persis seperti command /profile
+		h.handleProfile(&dummyMessage)
+
+	// --- NAVIGASI KE MENU TOOLS ---
+case "open_tools_menu":
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	// 1. Ambil Teks dari JSON
+	text := h.Localizer.Get(lang, "tools_menu_welcome")
+	if text == "" {
+		text = "🛠️ <b>Menu Peralatan</b>\n\nSilakan pilih fitur:"
+	}
+
+	// 2. Langsung EDIT Pesan (Aman karena pesan asal adalah Teks)
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	
+	keyboard := h.createToolsMenuKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	
+	// 3. Kirim (Cukup log warning jika error, tidak perlu fallback kirim baru)
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Printf("WARNING Edit Tools Menu: %v", err)
+	}
+
+// --- KEMBALI KE MENU UTAMA ---
+case "back_to_main_menu":
+	user, _ := h.getOrCreateUser(callback.From)
+	lang := user.LanguageCode
+
+	// 1. Ambil Teks Welcome
+	text := h.Localizer.Get(lang, "welcome_message")
+	if text == "" {
+		text = "👋 <b>Menu Utama</b>"
+	}
+	
+	// 2. Langsung EDIT Pesan
+	msg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, text)
+	msg.ParseMode = "HTML"
+	
+	keyboard := h.createMainMenuKeyboard(lang)
+	msg.ReplyMarkup = &keyboard
+	
+	if _, err := h.Bot.Send(msg); err != nil {
+		log.Printf("WARNING Edit Main Menu: %v", err)
+	}
 
 	case "select_chat_model":
 		// Langkah 2: User sudah pilih model -> Mulai Chat
@@ -2197,41 +2260,42 @@ func (h *Handler) navigateModels(callback *tgbotapi.CallbackQuery, providerID st
 
 // Sisa fungsi-fungsi dari langkah sebelumnya (TIDAK BERUBAH)
 func (h *Handler) handleStart(message *tgbotapi.Message) {
-	// Cek dulu apakah pengguna sudah ada di database
+	// --- [BAGIAN 1: LOGIKA DATABASE & REFERRAL (KEMBALI KE ASAL)] ---
+	
+	// Cek apakah pengguna sudah ada di database
 	user, err := h.DB.GetUserByTelegramID(message.From.ID)
 	if err != nil {
 		log.Printf("ERROR: Failed to get user on start: %v", err)
 		return
 	}
 
-	// --- LOGIKA BARU UNTUK PENGGUNA BARU ---
+	// Jika pengguna belum ada (User Baru)
 	if user == nil {
-		// Jika pengguna tidak ada, ini adalah pengguna baru.
 		var referrerID int64
 
-		// Cek dan proses ID referral SEBELUM membuat pengguna
+		// Cek ID referral (misal: /start ref_12345)
 		if strings.HasPrefix(message.CommandArguments(), "ref_") {
 			parsedID, err := strconv.ParseInt(strings.TrimPrefix(message.CommandArguments(), "ref_"), 10, 64)
-			// Pastikan pengguna tidak mereferensikan dirinya sendiri
+			// Pastikan tidak mereferensikan diri sendiri
 			if err == nil && parsedID != message.From.ID {
 				referrerID = parsedID
 			}
 		}
 
-		// Siapkan data pengguna baru, termasuk ID referral jika ada
+		// Siapkan data pengguna baru
 		newUser := database.User{
 			TelegramID:           message.From.ID,
 			Username:             message.From.UserName,
-			PaidCredits:          0, // Pengguna baru mulai dengan 0 kredit berbayar
-			FreeCredits:          5,
+			PaidCredits:          0,
+			FreeCredits:          5, // Bonus awal
 			LastFreeCreditsReset: time.Now(),
-			LanguageCode:         "en",
+			LanguageCode:         "en", // Default Inggris dulu, nanti bisa ganti
 			AspectRatio:          "1:1",
 			NumOutputs:           1,
-			ReferrerID:           referrerID, // ID referral langsung dimasukkan di sini
+			ReferrerID:           referrerID,
 		}
 
-		// Buat pengguna baru di database
+		// Simpan ke Database
 		user, err = h.DB.CreateUser(&newUser)
 		if err != nil {
 			log.Printf("ERROR: Failed to create user on start: %v", err)
@@ -2243,20 +2307,32 @@ func (h *Handler) handleStart(message *tgbotapi.Message) {
 		}
 	}
 
-	// --- Sisa fungsi (mengirim pesan sambutan) tidak berubah ---
+	// --- [BAGIAN 2: TAMPILAN (UBAH JADI TEKS)] ---
+	
 	lang := user.LanguageCode
-	args := map[string]string{
-		"name":         message.From.FirstName,
-		"aspect_ratio": user.AspectRatio,
-		"num_images":   strconv.Itoa(user.NumOutputs),
+
+	// Ambil teks welcome dari JSON (pastikan key "welcome_message" sudah ada di JSON)
+	text := h.Localizer.Get(lang, "welcome_message")
+	
+	// Fallback jika JSON belum siap
+	if text == "" {
+		args := map[string]string{"name": message.From.FirstName}
+		// Coba ambil key lama "welcome" jika "welcome_message" kosong
+		text = h.Localizer.Getf(lang, "welcome", args) 
+		if text == "" {
+			text = fmt.Sprintf("👋 <b>Hello %s!</b>\nWelcome to AI Bot.", message.From.FirstName)
+		}
 	}
-	caption := h.Localizer.Getf(lang, "welcome", args)
-	photoMsg := h.newReplyPhoto(message, tgbotapi.FileURL(h.Config.WelcomeImageURL))
-	photoMsg.Caption = caption
-	photoMsg.ParseMode = "HTML"
+
+	// PENTING: Gunakan NewMessage (Teks) agar transisi menu mulus
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ParseMode = "HTML"
+
+	// Pasang Keyboard Menu Utama
 	keyboard := h.createMainMenuKeyboard(lang)
-	photoMsg.ReplyMarkup = &keyboard
-	h.Bot.Send(photoMsg)
+	msg.ReplyMarkup = keyboard
+
+	h.Bot.Send(msg)
 }
 
 func (h *Handler) handleHelp(message *tgbotapi.Message) {
