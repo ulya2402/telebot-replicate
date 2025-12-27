@@ -57,23 +57,32 @@
   "button_faq": "❓ FAQ",
   "faq_title": "*Frequently Asked Questions*\n\nHere are some common questions. Please select one to see the answer\n\nIf your question isn't listed here, feel free to ask at @botaralabs.",
   "faq_q1_button": "What is this bot?",
-  "faq_q1_answer": "This is an AI-powered bot that can generate images from your text descriptions.",
-  "faq_q2_button": "How do I get credits?",
-  "faq_q2_answer": "You receive 5 free credits daily. You can also get more by using the `/topup` command or by inviting friends via your `/referral` link.",
-  "faq_q3_button": "How much does generation cost?",
-  "faq_q3_answer": "Each AI model has a different credit cost. You can see the cost next to the model's name when you select one via the `/img` command.",
-  "faq_q4_button": "Do I lose credits if generation fails?",
-  "faq_q4_answer": "No, don't worry! If an image generation fails due to an error, your credits will *not* be deducted.",
-  "faq_q5_button": "Can I use my own image as a reference?",
-  "faq_q5_answer": "Absolutely! Some models support this feature. It will be indicated when you select a model. Just send your image with your prompt in the *caption*.",
-  "faq_q6_button": "Why does my image look different from my prompt?",
-  "faq_q6_answer": "The quality of the output heavily depends on the detail in your prompt. Try to be more specific and detailed, and use English for best results.\n\nExample:\n❌ `cute cat`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
-  "faq_q7_button": "How does the credit system work?",
-  "faq_q7_answer": "There are 2 types of credits: *Free* & *Paid*.\n\n*Free Credits*: You get 5 of these *every day*. They reset at midnight (00:00 UTC). Any unused free credits from the previous day will expire.\n\n*Paid Credits*: These are the credits you purchase via `/topup`. They *do not expire* and are only used after your daily free credits have run out.",
-  "faq_q8_button": "What are Diamonds (💎)?",
-  "faq_q8_answer": "Diamonds (💎) are a special currency in this bot used for premium features, like creating *videos*.\n\nYou cannot buy Diamonds directly. The only way to get them is by exchanging your *Credits* (💵).",
-  "faq_q9_button": "How do I get Diamonds?",
-  "faq_q9_answer": "You can exchange your Credits (💵) into Diamonds (💎) using the `/exchange` command.\n\nThe exchange rate is:\n`20 Credits (💵) = 1 Diamond (💎)`",
+"faq_q1_answer": "This is an AI-powered bot that lets you chat with advanced LLM-based assistants and generate images from text descriptions—all in one place.",
+
+"faq_q2_button": "How do I get credits?",
+"faq_q2_answer": "You receive 5 free credits every day. You can also get more credits by using the `/topup` command or by inviting friends through your `/referral` link.",
+
+"faq_q3_button": "How much does it cost to use?",
+"faq_q3_answer": "Each AI model—whether for chat or image generation—has its own credit cost. You can see the cost next to the model name when selecting it via the available commands (such as `/img` for images).",
+
+"faq_q4_button": "Do I lose credits if generation fails?",
+"faq_q4_answer": "No worries! If an image generation or AI request fails due to a system error, your credits will *not* be deducted.",
+
+"faq_q5_button": "Can I use my own image as a reference?",
+"faq_q5_answer": "Yes! Some image models support reference images. This will be clearly indicated when you select a model. Simply send your image together with your prompt in the *caption*.",
+
+"faq_q6_button": "Why is the AI response or image different from my prompt?",
+"faq_q6_answer": "The quality of AI responses and images strongly depends on how clear and detailed your prompt is. Be specific, provide context, and use English for the best results.\n\nExample:\n❌ `cute cat`\n✅ `a fat orange cat sleeping on a stack of books, 3D cartoon style, soft lighting`",
+
+"faq_q7_button": "How does the credit system work?",
+"faq_q7_answer": "There are 2 types of credits: *Free* and *Paid*.\n\n*Free Credits*: You get 5 free credits *every day*. They reset at 00:00 UTC, and unused free credits will expire.\n\n*Paid Credits*: These are credits you purchase via `/topup`. They *never expire* and are used only after your daily free credits run out.",
+
+"faq_q8_button": "What are Diamonds (💎)?",
+"faq_q8_answer": "Diamonds (💎) are a premium in-bot currency used for advanced features, such as creating *videos* or accessing special AI capabilities.\n\nDiamonds cannot be purchased directly and must be obtained by exchanging Credits (💵).",
+
+"faq_q9_button": "How do I get Diamonds?",
+"faq_q9_answer": "You can convert your Credits (💵) into Diamonds (💎) using the `/exchange` command.\n\nExchange rate:\n`20 Credits (💵) = 1 Diamond (💎)`",
+
   "force_subscribe_message": "<b>One More Step!</b> 🔑\n\nThis feature is exclusive to our channel members. Please join us to continue, then try again.",
   "force_subscribe_button": "🔑 Join Channel",
   "button_topup_contextual": "💰 Top Up Credits?",
@@ -137,7 +146,7 @@
   "chat_mode_reply_cost": "\n\n<blockquote>💰 <i>Cost: %d Credit</i></blockquote>",
   "chat_mode_reset_btn": "🧹 Reset Memory",
   "chat_mode_reset_done": "🧹 <b>Memory Cleared!</b>\nI have forgotten our previous conversation.",
-  "welcome_message": "<b>Welcome</b> 🎨\n\nI am your personal AI assistant for image generation. You can bring any idea to life, just by using words.\n\n<blockquote>You get <b>5 free credits</b> every day to start creating!</blockquote>\n\n<b>Want more credits? 🚀</b>\n\nsubscribe using the command <b>/topup</b> or tap the button below. We accept payments via <b>Stars ⭐</b> or <b>manual transfer! 💳</b>",
+"welcome_message": "<b>Welcome</b> 🎨\n\nI’m your personal AI assistant for chatbots and image generation. Bring any idea to life just by using words.\n\n<blockquote>You get <b>5 free credits</b> every day to start creating!</blockquote>\n\n<b>Want more credits? 🚀</b>\n\nSubscribe using the <b>/topup</b> command or tap the button below. We accept payments via <b>Stars ⭐</b> or <b>manual transfer 💳</b>",
   "button_account": "💳 My Account",
   "tools_menu_welcome": "🛠️ <b>Toolbox Menu</b>\n\nSelect one of the utility tools below to edit your media:",
   "button_tools": "🛠️ Other Tools",

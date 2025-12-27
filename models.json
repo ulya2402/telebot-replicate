@@ -1038,5 +1038,14 @@
       "cost": 1,
       "enabled": true,
       "description": "Powerful open source model."
+    },
+    {
+      "id": "qwen-layered",
+      "name": "Qwen Layer Splitter",
+      "replicate_id": "qwen/qwen-image-layered",
+      "type": "image-to-image",
+      "cost": 4,
+      "description": "Split image into transparent RGBA layers",
+      "enabled": true
     }
   ]
